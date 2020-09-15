@@ -1,0 +1,62 @@
+People who contributed to IC35Link, in almost chronological order:
+
+- Thomas Schulz <t.schulz@d2mail.de>
+  the initial author (myself :-), needed it for lack of a Windows-System
+
+- Michael Bruennert <michael.bruennert@eikon.tum.de>
+  was the first one (besides me) interested in IC35sync/Linux,
+  supplied lots of 'portmon' logs from IC35sync under Windows/NT,
+  which made protocol analysis and implementation possible, and
+  gave feedback about bugs under SuSE-7.0
+
+- "Logbuch IC35" <Logbuch-IC35@exmail.de>
+  supplied webspace for ic35sync_1.14.tar.gz and ic35sync_1.15.tar.gz
+
+- Uwe Stobinski <uwe.stobinski@addcom.de>
+  made an excellent IC35 website, hosted an "IC35 Wettbewerb" and
+  supplied webspace for ic35sync_1.14.tar.gz and ic35sync_1.15.tar.gz
+
+- Norbert Kolb <Norbert.Kolb@htl.de>
+  offered means for publishing IC35sync/Linux
+  and made many proposals for improving it
+
+- Dieter Schultschik <schultschik@chello.at>
+  alias <tscherno.bill@gmx.net>
+  gave feedback about bugs under RedHat-7.0
+
+- Harald Becker <harald@kristall.de>
+  contributed ideas for faster write MMCard files and
+  suggested compile without logging and com-simulation
+
+- Oliver Zechlin <Oliver.Zechlin@mch.siemens.de>
+  promised to supply me with the IC35 communication protocol specs
+  and gave me "Goodies" for my "IC35 Wettbewerb" contribution
+
+- Thomas Lichtenberg <thomas@ThomasLichtenberg.de>
+  reported some bugs and did tests with IC35 firmware V1.38
+  and under SuSE-7.0 and SuSE-6.0
+
+- Malte Schmidt <malte.schmidt@gmx.de>
+  reported some bugs and did tests with Mandrake-7.2
+
+- Konrad Mader <konrad.mader@gmx.de>
+  reported bug with ic35sync many addresses and some more
+  inspired autogen.sh due to configure missing in CVS
+
+- Christian Theile <ch_theile@gmx.de>
+  reported compile problem with Mandrake-8.0
+
+- Karl Stroetmann <Karl.Stroetmann@mchp.siemens.de>
+  reported compile problem with SuSE-7.2
+
+- Hans-Michael Stahl <hm.stahl@berlin.de>
+  contributed ic35mgr "mmcgettree","mmcputtree" commands for whole dirtree
+
+organizations whose work helped me:
+- Debian http://www.debian.org
+  for the best (in my opinion) FreeSoftware GNU/Linux System
+- IMC consortium http://www.imc.org
+  for the vCard,vCalendar standards and API
+- SourceForge http://sourceforge.net
+  for hosting IC35Link and its CVS Repository
+

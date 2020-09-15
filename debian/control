@@ -1,0 +1,16 @@
+Source: ic35link
+Section: unknown
+Priority: optional
+Maintainer: crt0mega <crt0mega@c-r-t.tk>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.5.0
+#Homepage: <insert the upstream URL, if relevant>
+#Vcs-Browser: https://salsa.debian.org/debian/ic35link
+#Vcs-Git: https://salsa.debian.org/debian/ic35link.git
+
+Package: ic35link
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Revived managing and syncing software for IC35
+ This is a revival of the old ic35link software by Thomas Schulz.
+

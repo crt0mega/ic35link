@@ -1,0 +1,11 @@
+--- a/src/ic35mgr.c
++++ b/src/ic35mgr.c
+@@ -519,7 +519,7 @@
+ 	    mmcget(ic35path, NULL);
+ 	    free(ic35path);
+ 	    break;
+-	default:	    
++	default:;	    
+ 	}
+     }
+     rc = mmc_closedir( dirp );

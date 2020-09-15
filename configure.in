@@ -1,0 +1,201 @@
+dnl ---------------------------------------------------------------------------
+dnl Process this file with autoconf to produce a configure script.
+dnl $Id: configure.in,v 1.9 2001/11/20 23:28:10 thosch Exp $
+dnl Copyright (C) 2001 Thomas Schulz
+dnl ---------------------------------------------------------------------------
+AC_INIT(src/ic35sync.c)
+AC_REVISION($Revision: 1.9 $ $Date: 2001/11/20 23:28:10 $)
+
+
+dnl ---------------------------------------------------------------------------
+dnl This is the only place where the package version appears
+dnl ---------------------------------------------------------------------------
+PACKAGE=ic35link
+VERSION=1.18.1
+ISODATE=2001-11-10
+AC_SUBST(ISODATE)
+AC_DEFINE_UNQUOTED(ISODATE, "$ISODATE", release date)
+
+
+dnl ---------------------------------------------------------------------------
+dnl Initialize automake
+dnl ---------------------------------------------------------------------------
+dnl ??? AUTOMAKE_OPTIONS=no-dependencies
+AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+AC_PREFIX_DEFAULT(/usr/local)
+AM_MAINTAINER_MODE
+
+
+dnl ---------------------------------------------------------------------------
+dnl checks for needed compilers
+dnl ---------------------------------------------------------------------------
+AC_PROG_CC
+
+dnl ---------------------------------------------------------------------------
+dnl option: disable logging and com-simulation
+dnl ---------------------------------------------------------------------------
+logandcomsim=yes
+AC_MSG_CHECKING(if we want logging and com-simulation)
+AC_ARG_ENABLE(
+	logandcomsim,
+	[  --enable-logandcomsim   [default=yes] enable logging and com-simulation],
+	logandcomsim="$enableval", logandcomsim="yes"
+	)
+AC_MSG_RESULT($logandcomsim)
+if test "$logandcomsim" != "yes"; then
+	AC_DEFINE_UNQUOTED(NO_LOGSIM, 1, disable log and com-simulation)
+fi
+
+dnl ---------------------------------------------------------------------------
+dnl option: disable clean compiles
+dnl ---------------------------------------------------------------------------
+compiler_warnings=yes
+AC_MSG_CHECKING(if we want compiler warnings)
+AC_ARG_ENABLE(
+	warnings,
+	[  --enable-warnings       [default=yes] enable gcc compiler warnings],
+	compiler_warnings="$enableval", compiler_warnings="yes"
+	)
+AC_MSG_RESULT($compiler_warnings)
+
+dnl ---------------------------------------------------------------------------
+dnl option: ansi warnings
+dnl ---------------------------------------------------------------------------
+AC_MSG_CHECKING(whether to compile with strict ANSI)
+AC_ARG_ENABLE(
+	ansi,
+	[  --enable-ansi           [default=no]  enable gcc strict ansi checking],
+	,
+	[enable_ansi="no"])
+AC_MSG_RESULT($enable_ansi)
+
+dnl ---------------------------------------------------------------------------
+dnl option: pedantic warnings
+dnl ---------------------------------------------------------------------------
+AC_MSG_CHECKING(whether to compile with pedantic warnings)
+AC_ARG_ENABLE(
+	pedantic,
+	[  --enable-pedantic       [default=no]  enable gcc pedantic checking],
+	,
+	[enable_pedantic="no"])
+AC_MSG_RESULT($enable_pedantic)
+
+if test "$ac_cv_prog_CC" = gcc -o "$ac_cv_prog_CC" = g++; then
+  if test $compiler_warnings = yes; then
+    if echo "$CFLAGS" | grep "\-Wall" > /dev/null 2> /dev/null; then
+      CFLAGS="$CFLAGS"
+    else
+      echo "updating CFLAGS with extra '-Wall' option"
+      CFLAGS="$CFLAGS -Wall"
+    fi
+
+    if echo "$CFLAGS" | grep "\-Wmissing-prototypes" > /dev/null 2> /dev/null; then
+      CFLAGS="$CFLAGS"
+    else
+      echo "updating CFLAGS with extra '-Wmissing-prototypes' option"
+      CFLAGS="$CFLAGS -Wmissing-prototypes"
+    fi
+  fi
+
+  if test "$enable_ansi" = "yes"; then
+    if echo "$CFLAGS" | grep "\-ansi" > /dev/null 2> /dev/null; then
+      CFLAGS="$CFLAGS"
+    else
+      CFLAGS="$CFLAGS -ansi"
+      echo "updating CFLAGS with extra '-ansi' option"
+    fi
+  fi
+
+  if test "$enable_pedantic" = "yes"; then
+    if echo "$CFLAGS" | grep "\-pedantic" > /dev/null 2> /dev/null; then
+      CFLAGS="$CFLAGS"
+    else
+      CFLAGS="$CFLAGS -pedantic"
+      echo "updating CFLAGS with extra '-pedantic' option"
+    fi
+  fi
+fi
+
+
+dnl ---------------------------------------------------------------------------
+dnl generate the config header
+dnl ---------------------------------------------------------------------------
+AM_CONFIG_HEADER(config.h)
+
+
+dnl ---------------------------------------------------------------------------
+dnl Checks for programs.
+dnl ---------------------------------------------------------------------------
+AC_PROG_INSTALL
+dnl AC_PROG_CC		was checked above already
+AC_PROG_YACC
+AC_PROG_AWK
+AC_PROG_LN_S
+
+dnl ---------------------------------------------------------------------------
+dnl Checks for header files.
+dnl ---------------------------------------------------------------------------
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h malloc.h sys/ioctl.h unistd.h)
+AC_HEADER_TIME
+
+dnl ---------------------------------------------------------------------------
+dnl Checks for typedefs, structures, and compiler characteristics.
+dnl ---------------------------------------------------------------------------
+AC_C_CONST
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+
+dnl ---------------------------------------------------------------------------
+dnl Checks for library functions.
+dnl ---------------------------------------------------------------------------
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_MEMCMP
+AC_TYPE_SIGNAL
+AC_FUNC_STRFTIME
+dnl ??? AC_CHECK_USLEEP
+dnl ??? AC_CHECK_ITIMER
+AC_FUNC_UTIME_NULL
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(gettimeofday mktime select strdup strerror strspn strstr)
+
+
+dnl ---------------------------------------------------------------------------
+dnl Makefiles to create:
+dnl ---------------------------------------------------------------------------
+AC_OUTPUT(Makefile src/Makefile doc/Makefile)
+
+
+dnl ---------------------------------------------------------------------------
+dnl output our configuration
+dnl ---------------------------------------------------------------------------
+echo
+echo these are the options selected:
+echo
+if test "$USE_MAINTAINER_MODE" = "yes"; then
+	echo "    maintainer mode               : YES"
+else
+	echo "    maintainer mode               : NO"
+fi
+if test "$logandcomsim" = "yes"; then
+	echo "    log and com-simulation        : YES"
+else
+	echo "    log and com-simulation        : NO"
+fi
+if test "$compiler_warnings" = "yes"; then
+	echo "    gcc compiler warnings         : YES"
+else
+	echo "    gcc compiler warnings         : NO"
+fi
+if test "$enable_ansi" = "yes"; then
+	echo "    gcc compile with strict ansi  : YES"
+else
+	echo "    gcc compile with strict ansi  : NO"
+fi
+if test "$enable_pedantic" = "yes"; then
+	echo "    gcc compiler pedantic checking: YES"
+else
+	echo "    gcc compiler pedantic checking: NO"
+fi
+echo

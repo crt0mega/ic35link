@@ -1,0 +1,741 @@
+	$Id: TODO,v 1.21 2001/08/09 23:59:22 thosch Rel $
+	TODO for IC35 communication
+	===========================
+
+legend
+------
+F task to do
+  yyyy-mm-dd_hh WHAT
+  details ..
+  F sub-tasks ..
+F is current state from:
+- todo
+= work
++ done
+x canc	cancelled as no more need/want
+WHAT is task change from:
+	todo	task invented
+	+nn%	task nn% done
+	done	task done
+	canc	task cancelled
+
+- documentation for newbies
+  2001-08-03_13 todo	Klaus Krenz <Klaus.Krenz@t-online.de> had problems
+  - explain COM?-ports are /dev/ttyS?, symlink /dev/ic35, access rights
+  - initial test with 'ic35sync status' and/or 'ic35mgr mmcdir'
+  - for 'mmc*' commands put backslashed path in quotes
+- segfault empty fields in gcrd-file 'TITLE:' or 'BDAY:'
+  2001-06-17_21 todo	bug report by Konrad Mader <konrad.mader@gmx.de>
+  empty 'BDAY:' does not segfault, but put 'BDAY' (no colon) into PIMfile
+  and next ic35sync complains "parse error"
+  seem like output error, i.e. shall output 'BDAY:' not 'BDAY'
+- report protocol error reasons (e.g. get_modflen timeout)
+  2001-06-17_21 todo	bug report by Konrad Mader <konrad.mader@gmx.de>
+  should do better error reports for easier finding protocol problems
+  get_modflen timeout failure for 860 addresses fixed 2001-06-17_23
+- combine ic35sync,ic35mgr into one program ic35link
+  2001-02-25_20 todo	proposed by Harald Becker
+  - backward compatible: symlink ic35sync -> ic35link and ic35mgr -> ic35link
+    behave like before if argv[0] is "ic35sync" or "ic35mgr"
+  - partial help like CVS
+    --help
+    --help-options
+    --help-commands
+    -H <command> or --help <command>
+- fixes suggested by GNU Coding Standards and automake/autoconf
+  2001-02-03_15 todo
+  + configure.in: use AC_REVISION
+  + fix warnings from -Wmissing-prototypes
+  + fix warnings from -ansi
+  - fix warnings from -pedantic
+  + long options --version --help etc. --info shows build-info
+  + info enquiry with --version --help --info shall exit(0) !
+  - use config.h in sources where needed (e.g. VERSION), see gnotepad+
+  + open device with O_NOCTTY
+  - test on okosuse (yacc/bison), test on tls
+  - misc: scripts for sync with gnome, korganizer
+  - bugs to <email> at end of --help message
+  - use 'autogen' for options and usage, see /usr/doc/autogen/autogen.ps
+  - update copyright 2001, add license notice
+- ic35mgr.txt extensions
+  2001-01-31_02 todo
+  - new command 05 - retry read statusblock 16400-16 bytes
+    in WinNT logs from Michael Logs270101.tar.gz
+  - reponse 91 from IC35 for powerfail ?  (see ic35mmcput52rcv91.log)
+  - analyse & describe contents of IC35 statusblock, logo-bitmap
+    see ic35mgr.txt 1.8.1
+- ic35mgr communication improves
+  2001-01-30_01 todo
+  - use #define for busywait delaytime and blocksize
+    PIII/500MHz 16/3212 1/187
+  - measure and improve timeouts in mgrproto.c
+  ? handle backup problem (Michael Bruennert): recv 90 instead of datablock
+  - handle mgrproto problem: abort on recv 90 instead A0 after send ack/nak
+  - mgrtrans.c: more disconn retry to catch >8.5 sec tmo on lost char
+    maybe do twice Mcmdrsp(MCMDreset,MRSPgotcmd)
+- ic35sync syn{trans,proto}.* re-organize like mgr{trans,proto}.*
+  2001-01-29_12 todo
+- ic35sync local database
+  2001-01-26_01 todo
+  to avoid read all IC35 records to check for deleted in PIMfiles
+  and for store "sysinfo" date+time to check match with IC35
+  may also need sync local databases between e.g. work-,home-system
+  use XML-format for local database ?!
+- ic35mgr handle Ctl-C user interrupt
+  2001-01-12_21 todo
+  for mmcput,mmcget do mmc_close on SIGINT, for other ignore SIG_INT
+  e.g. mmc_readfile,mmc_writefile return ERRor on SIG_INT
+- ic35mgr get/put multiple file, sync dirtree
+  2001-01-12_19 todo
+  - get multiple files:
+    mmcget MMCard1/dir/*	get all files from dir
+    mmcget MMCard1/*.I35	get multiple files
+    mmcget MMCard1/dir/ 	get recursively all files in dir and below
+    mmcget MMCard1/		get recursively all files from MMCard
+    recursive get creates local directory tree like to MMCard subtree
+    additional localdir/ arg puts files below localdir/
+    put multiple files with same logic
+    problem: make dir on IC35 MMCard, use mmc_opendir(,MMCcreatrunc) ?
+  - synchronize MMCard with local dirtree
+    option "-n" to test what would be sync'd
+  - interactive transfer multiple files and walk dirs (like ftp)
+  2001-05-30_22 todo	request guenther dreher-esders <guenther@esders-web.de>
+  - guenther wants to 'ic35mgr mmcput MMCard1/x*.txt' for reading big text
+    on IC35 split into many smaller files
+- ic35sync support XML format
+  2001-01-09_17 todo	proposed by Norbert Kolb
+  see xmlFiles.pdf.gz from Harald Becker
+  2001-02-25_20 work	Harald Becker
+- ic35sync sync/import/export e.g. ToDoList alone
+  2001-01-09_17 todo	proposed by Norbert Kolb
+- analyse and implement IC35 manager install application,bitmap,midi
+  2000-12-31 todo
+  - send application
+  - send IC35 start graphic bitmap
+  - send MIDI file
+  ? remove application
+  ? remove bitmap, MIDI file
+- problem IC35 does not alarm
+  2000-12-30_20 todo
+  problem after: restore cfgmsg27.i35, set date+time, import 20001230.*
+  reason: old repeated events "ww" 20001023,20001027 with endrepeat before today
+  2000-12-31_17 50%	reason found
+  ic35sync do not write events with endrepeat before today ?
+- ic35sync corrections
+  2000-12-30_19 todo
+  + on read_id_frec from IC35 fail do writerec instead of updaterec
+  2000-12-31_18 +30%
+  - write to IC35 all Sched,ToDo,Memo which not on IC35 (for initial sync)
+  - sync overwrites IC35 changes after: reset,delall,restore IC35
+    because IC35 appearently does not restore sysinfo date+time ?!
+- shared library e.g. for perl module ic35-communications
+  2000-12-29_02 todo	proposed by Norbert Kolb
+- vcaconv vca2bin,bin2vca,bin2txt transfer recstat
+  design-problem ?  updic35rec() and putic35rec() to not transfer recstat
+  see experimental dataio.c 1.32.2
+  2000-12-26_03 todo
+- ic35sync conflict resolve options
+  2000-12-25_06 todo
+  - PIM override IC35 (default)
+  - IC35 overrides PIM
+  - duplicate conflict records
+  - inspect for sync,import/export: gnome-pilot,-conduits, pilot-link
+  - search sourceforge etc. for other PIM-programs
+- reduce ic35sync log volume
+  2000-12-14_21 todo
+  option for loglevel, buffer higher level log lines in FIFO
+  flush buffered log to file on error, discard if buffer gets full
+- ic35sync minor improvements
+  2000-12-17_17 todo
+  + fix vcc.y compile warnings
+  x extract rcskvf() from ic35sync.c,ic35mgr.c to util.c
+    no more need with VERSION from configure.in
+  - pimfile(s) writable not pre-checked, pim_close() does not return write-error
+  - write and backup pimfile(s) only if really changed: global dirty-flag
+  - pim_open(),pim_close() are misleading names
+    xxx_open(),xxx_close re-design: who/where store filenames ?
+    see experimental dataio.c 1.32.1 and datavca.c 1.38.1
+  - dataio.c: use field map tables for vCard,vCal to/from IC35
+  - syntrans.c: internal fd, no need for fd-argument
+    implicit close on next open_file() and disconnect()
+  - synproto.c: finer checks in recvrsp()
+  - malloc/error traps with setjmp(),longjmp()
+- improve gnomecard
+  2000-12-17_21 todo
+  - does not change X-PILOTSTAT !
+    fix: set X-PILOTSTAT:1 when VCARD changed
+  - changes VCARD.REV to UTC not local time !
+  - does update *ALL* VCARD.REV times on exit
+    reason: gnomecard wants yyyy-mm-ddThh:mm:ss, drops yyyymmddThhmmss
+    fix: accept also yyyymmddThhmmss
+  - default e-mail type is AOL, better change to INTERNET
+  - default birthday 1970-01-01 is bad, should be empty
+- improve gnomecal
+  2000-12-25_19 todo
+  - extra field for VTODO.DTSTART
+  - extra field for VEVENT.DESCRIPTION
+  - do not crash if VEVENT,VTODO.CLASS:PUBLIC missing
+  - do not update *ALL* LAST-MODIFIED and DCREATED on exit
+  - add missing standard categories Personal,Business(,Unfiled)
+  - show/edit VTODO.STATUS
+  ? output correct VCAL.VERSION:1.0 instead of 1.2.0
+  ? seems to mis-behave with X-PILOTSTAT,X-PILOTID
+- improve korganizer
+  2000-12-25_19 todo
+  - support VTODO.DTSTART,DUE
+  - support VTODO.CATEGORIES
+  - support also AALARM, distinguish from DALARM
+  ? korganizer prios are 1,2,3,4 ?  prios are duplicate ?
+- problem: memory leak in vobject.c setVObjectStringZValue()
+  2000-12-12_02 todo
+  setVObjectStringZValue() and relatives discard previous string
+  although it may be malloc()ated'd and free() should be done.
+  * vobject.c has 'strTbl[]' possibly usable to fix memory leak
+    but strcasecmp prohibits use for any string
+    strTbl[]  used in   lookupStr unUseStr cleanStrTbl
+    lookupStr called by newVObject lookupProp
+    unUseStr  called by deleteVObject
+    hashStr   called by lookupStr unUseStr
+  - solution-1:
+    extend above vobject.c utilities with strcmp() instead of strcasecmp()
+  - solution-2:
+    always create new VObject instead of changing string values
+    re-create vobj-list and/or vprop-list, then use cleanVObject()
+  - solution-3:
+    deleteStr() previous string value before set new string value
+- test-data for vCard,vCal to/from IC35 record conversion
+  2000-12-11_12 todo
+  - max.fieldlengths for each record
+  - Addresses
+    - name only
+    - no, one, two, three email-addrs
+    - telnos home,work,cell,fax
+    - non-ASCII in Name,ADR,ORG,..
+    - IC35 "(def.)" fields
+  - Schedule
+    - no alarm, LED-alarm, beep-alarm, LED+beep-alarm
+    - alarm 0,1,5,10,30 mins, 1,2,10 hours, 1,2 days before
+    - no repeat, repeat every d days, w weeks, m monwday, n monmday, y years
+  - ToDoList
+    - prio normal,high,low
+    - completed no,yes, other status
+  - Memo
+- ic35sync tests for export
+  2000-12-15_12 todo
+  restore IC35 from MMC, export from IC35 as reference PIMfile
+  run tests: save PIMfile-1, export to PIMfile-2, compare PIMfile-1,-2
+  = export to new PIMfile
+  = export to existing same PIMfile
+    no changes in PIMfile
+  - add IC35 records, export
+    only added PIMrecords shall be affected (modified+created time, recID)
+  - change IC35 records, export
+    only changed PIMrecords shall be affected (modified time)
+  - add records to PIMfile, export
+    added records in PIMfile shall be unaffected
+  - change PIMrecords, export
+    changed PIMrecords shall be overwritten from IC35
+- ic35sync tests for import
+  2000-12-15_12 todo
+  restore IC35 from MMC, export from IC35 as reference
+  run tests: export-1,import,export-2, compare export-1,-2
+  = import reference to IC35, i.e. re-import same data
+    changeflags on IC35 shall be reset, PIMfile unaffected
+    no write/update to IC35
+  = reset IC35, import reference into empty IC35
+    write all PIMrecords, new IC35-recIDs in PIMfile
+    owner addr shall appear as such
+  = add records to PIMfile, import
+    added PIMrecords on IC35, IC35-recIDs in added PIMrecords
+  - small PIMfile with all new records, import
+    all PIMrecords on IC35, IC35-recIDs in PIMrecords
+  = add records to IC35, import reference
+    added IC35 records shall have changeflag, no set_date+time
+  = change records in IC35, import reference
+    changed IC35 records shall be overwritten from PIMfile
+- ic35sync tests for sync
+  2000-12-19_02 todo
+  = some test data in testdelfld{1,2,3}.vca
+    sync testdelfld1.vca
+    import testdelfld2.vca
+    export testout2.vca
+    copy testdelfld2.vca to testdelfld3t.vca, del fields,recs, set X-PILOTSTAT:1
+    sync testdelfld3t.vca
+    export testout3.vca			should be same as testdelfld3t.vca
+    IC35: mark all records edited
+    copy testout2.vca to testdelfld4.vca
+    sync testdelfld4.vca		should be same as testdelfld3t.vca
+  - specify more tests
+- ic35sync interactive ?
+  2000-11-06_23 todo
+  - implicit connect, on exit disconnect
+  - set date, category
+  - open file, close file
+  - read file record
+  - write file record
+  - delete file record
+  - reset file record changeflag
+- improve source comments
+  2000-12-01_17 todo
+  - ic35frec.c: IC35REC access logic
+  - synproto.c: PDU parameters
+- ic35log.sh improvements and tests
+  2000-12-01_14 todo
+  - test with WindowsNT-2line logs: see below
+  - test with WindowsNT-1line logs: see below
+  - test with Windows98 logs: see below
+  - improve ic35prot() structure to make it more clear / readable
+
+DONE
++ split ic35sync.c into modules:
+  2000-11-06_23 todo
+  + util.c	logging, error,message
+  + comio.c	serial communication
+  + synproto.c	L1,L2,L3 protocols
+  + syntrans.c	L4 protocol: IC35sync transactions
+  + dataio.c	import/export Addresses,Memo,Schedule,ToDoList as vCard,vCal
+  + ic35sync.c	main, IC35sync session
+  + Makefile
+  2000-11-07_03 done
++ ic35sync minor improves
+  2000-11-07_01 todo
+  + util.c
+    + log_init() set also loglevel, default logtag=NULL ?
+    + log ic35sync version/rcsid to logfile
+  + syntrans.c
+    + combined connect = welcome,identify,power,authenticate,getdtime ?
+    + welcome: "WELCOME\x80" no need send "A" ?
+    + stop on wrong password: response != 0101
+  + Makefile
+    + targets dist,dist_co for ic35sync_<vers>.tar.gz
+    + integrated help
+  2000-11-15_04 +70% todo: Makefile
+  2000-11-18_23 done
++ ic35 record access
+  2000-11-15_02 todo
+  + access record-field
+  + num.of record-fields to struct ic35file
+  + output binary record-data for offline vCard,vCal develop
+  2000-11-19_01 done
++ ic35sync export in vCard, vCalendar format
+  2000-11-06_23 todo
+  sources:
+  * /local/pkg/ic35/sdkdllsr.zip
+    vcc.h vcc.y vobject.h vobject.c
+  * kpilot_3.1.10-1.0.tar.gz
+    kpilot-3.1.10/conduits/vcalconduit/ vcal-conduit.h vcal-conduit.cc
+    kpilot-3.1.10/conduits/vcalconduit/versit/ vcc.h vcc.y vobject.h vobject.c
+  * gnome-pim_1.2.0.orig.tar.gz
+    gnome-pim-1.2.0/libversit/ vcc.h vcc.y vobject.h vobject.c
+  * gnome-pilot-conduits_0.4
+  * gnome-pilot_0.1.55-0pre
+  * jpilot_0.97
+  * pilot-manager_1.107
+  * pilot-link_0.9.3
+  2000-11-19_20 work
+  + vcaconv:
+    + IC35 raw data -> vCard,vCal
+    + pretty-print vCard,vCal
+  + move ic35file definitions to dataio.c to vcaconv link syntrans etc.
+  + design output from IC35 to vCard,vCal file, maybe same file
+  + XPilotId instead of UID
+  + output text fields quoted printable if non-7bitASCII
+    use CHARSET=ISO-8859-1;QUOTED-PRINTABLE
+  + Schedule: repeated events, recurrence rule
+  + Schedule: DALARM = LED, AALARM = beep
+  + whattodo with Memo in vCal format ?
+    use VMEMO record VCMemoProp, extend vcc.*,vobject.*
+  2000-11-20_05 +50%
+  2000-11-21_06 +70%
+  2000-11-22_08 done
+x ic35sync export in vCard, vCalendar format: canceled tasks
+  2000-11-22_08 todo
+  x vcaconv: vCard,vCal -> IC35 raw data
+  x what is XPilotStatus for ? ICAL_PILOT_SYNC_{NONE,MOD,DEL}
+  2000-12-01_15 canc  replaced by ic35sync import,sync step-2,-3
++ improve ic35prot.awk
+  2000-11-07_23 todo
+  + test with WindowsNT-2line:
+    + Simple_hex.log
+    + Portmon_export.log
+    + Import1.log
+    + Import.tar.gz:Import.log
+  + test with Windows98:
+    + mgr_conn_disc.log
+    + mgr_conn_disc_mmc.log.gz
+    + sync_missoutlook.log
+    + mgr_rwdfile_20001107.tar.gz:*.log
+  2000-11-15_01 +90%  usable, todo: missing tests & improve structure
+  2000-11-27_13 canc  ic35prot.awk replaced by ic35log.sh
+x improve ic35prot.awk: canceled tasks
+  2000-11-07_23 todo
+  x test with WindowsNT-1line:
+    x Manager.tar.gz:*.LOG
+    x BackupRestore.tar.gz:*.log
+  x improve structure to make it more clear / readable
+  2000-11-27_13 canc  ic35prot.awk replaced by ic35log.sh
++ improve ic35-prot-analyzer
+  20001124_20 todo
+  + print 2nd ff. recdata fragments, 'currfid' less hacked
+  + integrate in one script
+  + ic35prot.awk faster and more clear
+    no need to support ASCII input
+    move ASCII output to separate pass
+  20001127_13 done
++ analyse Delete.tar.gz delete record etc.
+  2000-11-18_01 todo
+  + meaning of new commands 01 02, 01 07
+    01 07 = read next modified record
+    01 02 = delete record
+  x meaning of category response 01 01, 00 01
+    moved to "ic35sync experiments"
+  2000-11-24_01 done
++ ic35sync.txt: document readrecmod, deleterec
+  20001124_20 todo
+  20001127_15 done
++ ic35sync import,sync step-1
+  20001124_20 todo
+  + dataio.c: use rec-id AND file-id as UID/X-PILOTID
+  + dataio.c: implement REV, LAST-MODIFIED
+  + get_mod_flen
+  + read_mod_frec
+  + delete_frec
+  + write_frec
+  + set_date_time
+  + category
+  20001128_04 done
++ ic35 record access
+  2000-11-21_02 todo
+  + use ulong frid instead of uchar fid, ushort rid
+  + internal IC35 record structure for easier access
+  + break into fields, _get_recfld()'s static buffer is bad!
+  2000-12-01_02 +90%  todo: opaque IC35FILE
+  + hide ic35 file description internals, use acces functions
+  + use 4byte record-ID in binary format
+  2000-12-01_19 done
++ ic35log.sh process ic35sync logfiles, create simulation files from them
+  2000-12-01_14 todo
+  2000-12-02_02 done
++ ic35sync experiments:
+  2000-11-06_23 todo
+  tests for category,filename in ic35sync.c 1.11.1 branch
+  + check wrong password:
+    complains with 0100 (not 0101) only if password on power-on enabled
+  + check category response
+    + unknown category
+    + category with no records, e.g. "Unfiled"
+    + category with modified record(s)
+    + category with new record(s)
+    + new category with new record(s)
+    + new category without records
+    + set category influence on read_mod_frec ?	NO!
+    mostly response for existing category is 01 01, for non-exist 00 01
+    but not always, still unclear what the category sematics are
+  + test bad filename  or  other files, e.g. Messages ?
+    open compares only first any-case letter, unmatched opens "Schedule
+  2000-12-02_05 done
++ ic35sync import,sync step-2
+  20001124_20 todo
+  tests in ic35sync.c 1.11.1 branch
+  + commit_frec
+  + test functions for import,sync:
+    + category
+    + set_date_time
+      allows setting any text, tested up to 14 chars, maybe up to 16 chars
+    + get_mod_flen, read_mod_frec
+    + write_frec
+    + delete_frec
+    + commit_frec
+    + field modified on PC: only write_frec or also del old frec ?
+      must delete_frec old, as write_frec gets new rec-ID (does NOT overwrite)
+  20001202_07 done
++ ic35sync experiments for new commands
+  20001201_20 todo
+  + 00 01 ? file command ?			ic35r{66,68}.log
+    IC35 accepts 1st command, response: E3,49 CD 0F
+    then IC35 hangs no more accepting commands
+  ? 01 01			? del all? NO!	ic35r{62,63,65}.log
+    IC35 returns "done" response A0 03 00, record unchanged
+  * 01 02  fd_-- ri_--_-- fi	delete_frec
+  * 01 03  fd_-- 00 00 00 00	get_flen
+  * 01 04  fd_-- 00 00 00 00	get_mod_flen
+  + 01 05  fd_-- ri_--_-- fi	read by recID	ic35r{60,69,6A}.log
+    response non-exist Memo recID: A0,49  3E 81 D3 0D  60  xx xx xx 07
+    i.e. recID=0DD3813E, ch=60, 4 flens for Memo record
+    response non-exist Schedule recID: A0,49  FE AA 20 0E  00  xx xx xx ..
+    i.e. recID=0E20AAFE, ch=00, 10 flens for Schedule record
+  * 01 06  fd_-- 00 00 00 00	read_frec
+  * 01 07  fd_-- 00 00 00 00	read_mod_frec
+  * 01 08  fd_-- 00 00 00 00	write_frec
+  + 01 09  fd_-- ri_--_-- fi ...  update_frec	ic35r{61,6B,6C}.log
+    re-writes record keeping same recID
+  * 01 0A  fd_-- ri_--_-- fi	commit_frec
+  2000-12-03_09 done
++ ic35sync import,sync step-3
+  20001124_20 todo
+  vCard,vCal to IC35 record, test with vcaconv
+  + CategoryID cannot be mapped, use 0x00 and assume IC35 to create it
+  + Category: assume IC35 auto-creates new category
+  + vcard_to_ic35addr
+  + vevent_to_ic35sched
+  + vtodo_to_ic35todo
+  + vmemo_to_ic35memo
+  20001207_04 done
++ problem: QUOTED-PRINTABLE fails with multi-field props like ADR,N,ORG,..
+  2000-12-16_15 todo
+  with QUOTED-PRINTABLE e.g. ADR fields are not separated, but
+  first field gets value of all fields with ';' embedded.
+  known but unfixed problem, see: http://www.imc.org/imc-vcard/mail-archive/
+  + solution-1
+    do not use QUOTED-PRINTABLE on multi-field props, but only CHARSET
+  x solution-2
+    further debug problem to find real cause and fix
+  2000-12-16_21 done
++ ic35sync import,sync step-4 (import)
+  2000-11-24_20 todo
+  import,sync do both use set_date_time
+  + what is XPilotStatus for ? ICAL_PILOT_SYNC_{NONE,MOD,DEL}
+  + need update vCard,vCal from IC35rec to avoid destroy unmapped fields
+  + import vCard,vCal or binary into IC35
+  2000-12-17_08 done
++ vcaconv optionally sort output needed for test
+  2000-12-17_06 todo
+  sort vCard,vCal to stdout
+  2000-12-20_16 done
++ problems with gnomecard
+  2000-12-17_21 todo
+  + does not change X-PILOTSTAT, cannot not rely on X-PILOTSTAT alone
+    fix: detect change with create/modify-time VCARD.REV > last-sync-time
+  + does update *ALL* VCARD.REV times on exit
+    reason: gnomecard wants yyyy-mm-ddThh:mm:ss, drops yyyymmddThhmmss
+    fix: produce VCARD.REV:yyyy-mm-ddThh:mm:ss
+  2000-12-21_15 done
++ problems with korganizer
+  2000-12-17_21 todo
+  + wants VCAL PRODID:-//K Desktop Environment//NONSGML KOrganizer//EN
+    fixed ic35sync: do not change found VCAL:PRODID
+    must manually edit vCal output before load new into korganizer
+  + complains if VEVENT,VTODO lack UID and does not load those without
+    fixed ic35sync: also put UID to VCAL:VEVENT,VTODO (and VCARD, VMEMO)
+  + expects and produces NL-terminated lines, misbehaves on CRLF-terminated
+    fix ic35sync: auto-detect CRLF or NL and produce same output
+  + output causes parse-error if CR in NOTE,DESC,..
+    need translate NOTE,DESC: PIM NL <-> IC35 CRLF
+  + does not support VTODO.DTSTART,DUE
+    fix ic35sync: map to marked lines in VTODO
+  + does not support VTODO.CATEGORIES, keep IC35 on PIM->IC35 update
+  x has VEVENT.CATEGORIES, but IC35 has not
+  2000-12-24_20 done
++ problems with gnomecal
+  2000-12-17_21 todo
+  + does not support VTODO.DTSTART, but keeps in vCal on exit
+    fix ic35sync: keep marked line in VTODO.DESCRIPTION
+  + crashes if VTODO,VEVENT.CLASS:PUBLIC is missing
+    fix ic35sync: put CLASS:PUBLIC to VTODO,VEVENT if missing
+  + does not support VEVENT.DESCRIPTION, removes it from vCal on exit
+    vevent_to_ic35sched: 1st line to S_Subject, more lines to S_Notes
+    ic35sched_to_vevent: for gnomecal append S_Notes to VEVENT.SUMMARY
+  x outputs bad VCAL.VERSION:1.2.0, ic35sync keeps found version
+  2000-12-25_19 done
++ ic35sync import,sync step-5 (sync)
+  2000-12-15_12 todo
+  + sync vCard,vCal with IC35
+  + conflict resolve: initial sync empty PIM must not delete all IC35!
+  + inspect for sync,import: gnome-pim, kpilot
+  2000-12-25_06 done
++ ic35sync some improvements
+  2000-12-17_17 todo
+  + comio.c: for simulate do not set DTR neither open comport
+  + comio.c: log input V.24 signals on change
+  + comio.c: allow also WRx and RDx in simulation file
+  + dataio.c: remove unused _get_vcarec()
+  + dataio.c big, split: dataio.c 341 datatxt.c 92 databin.c 385 datavca.c 1528
+  + dataio.c: translate CRLF<->NL in NOTES,DESCRIPTION
+  + dataio.c utils, special conversions depend on PRODID Gnome,KOrganizer
+    put/get IC35 fields unsupported by PIM with mark in NOTE/DESCRIPTION
+    + KOrganizer: VTODO.CATEGORIES,DTSTART,DUE to/from VTODO.DESCRIPTION
+    + gnomecal:   VTODO.DTSTART to/from VTODO.DESCRIPTION
+    + gnomecal:   VEVENT.DESCRIPTION 1st line S_Subject, more S_Notes
+    + all:	    "(def1):","(def2):" to/from VCARD.NOTE
+  + cmp_ic35rec() from dataio.c to ic35frec.c:cmp_ic35rec ?
+  2000-12-25_23 done
++ ic35sync delete fields
+  currently IC35 to/from PIM record conversions do not delete fields
+  2000-12-27_19 todo
+  2000-12-29_04 done
++ correct vcaconv
+  produces empty output on 'vcaconv sortvca ic35.vcal'
+  2000-12-31_01 todo
+  fix: correct error in vobject.c
+  2000-12-31_18 done
++ analyse IC35 manager protocol
+  2000-11-06_23 todo
+  + init, exit
+  + backup database.org
+  + restore database.org
+  + read MMCard directories
+  + read file from MMCard
+  2001-01-04_06 +70%
+  + write file to MMCard
+  + delete file on MMCard
+  2001-01-10_03 done
++ implement IC35 manager MMCard operations
+  2000-12-31_18 todo
+  + init, exit
+  + read MMCard directories
+  + read file from MMCard
+  2001-01-10_02 +60%
+  + write file to MMCard
+  + delete file on MMCard
+  2001-01-12_22 done
++ implement IC35 manager backup,restore operations
+  2000-12-31_18 todo
+  + backup database.org
+  + restore database.org
+  2001-01-17_06 done
++ improve ic35mgr throughput
+  2001-01-12_20 todo
+  ic35mgr-1.17.4, busy wait 3.25ms every 16 byte block, 2 stopbits
+    backup     426128 read  16384 117.3248  3632 b/s
+		block recv  16384   3.3211  4924 b/s
+    restore    426128 write 16384 140.4816  3033 b/s
+		block send  16384   3.5056  4674 b/s
+  ic35mgr-1.12a, with com_sendw(), itimer pause every 29 chars, 2 stopbits
+    reversi.app 16452 read   5120   6.5236  2522 b/s
+    reversi.app 16452 write  2048  11.9835  1373 b/s
+  + comio.c,comio.h: separate com_sendw() with wait
+  + mgrproto.c: use com_sendw() with wait only for big blocks
+  measurements:
+    install MMCard:browser.app   376900 117.69   3202 b/s
+    install MMCard:sc_info.app    16452  10.07   1634 b/s
+    install MMCard:convert.app    49220  15.22   3234 b/s
+    restore MMCard1\20010124.I35  52222  25.962  2011 b/s
+    backup  MMCard1\20010121.I35  50701  20.625  2458 b/s
+  ic35mgr-1.10a, with com_sendw(), itimer pause every 29 chars, 2 stopbits
+    reversi.app 16452 read   5120   6.5678  2505 b/s
+    reversi.app 16452 write  2048  12.0640  1364 b/s
+    backup     426128 read  16384 117.4514  3628 b/s
+		block recv  16384   3.3287  4922 b/s
+    restore    426128 write 16384 203.6398  2093 b/s
+		block send  16384   6.0531  2707 b/s
+    status      16400 recv  16384   1.8257  8983 b/s
+  itimer, pause every 29 chars, 2 stopbits
+    reversi.app 16452 write  5120  11.8633  1387 b/s
+			     2048  12.3224  1335 b/s rewrite 13.8034 1192 b/s
+    mgrep.app   32836 write  2048  24.6884  1330 b/s
+    domind.app  49220 write  2048  37.1055  1326 b/s
+    domind.app  49220 read   5120  20.0052  2460 b/s
+  usleep(29*400) every 29 bytes, 2 stopbits
+    reversi.app 16452 write  5120  17.69     929 b/s
+			     2048  18.42     893 b/s
+  usleep(100) every 16 bytes
+    reversi.app 16452 write  5120  26.965    610 b/s
+			     2048  27.764    593 b/s rewrite 29.094   565 b/s
+			     1024  29.465    558 b/s
+    reversi.app 16452 read  10240   6.825   2410 b/s
+			     5120   7.284   2259 b/s  7.385  2228 b/s
+			     2048   8.485   1939 b/s
+			     1024  10.204   1612 b/s
+			      256  20.396    807 b/s
+			       15 243.773     67 b/s
+  2001-01-18_02 done
++ fix compile errors with gcc-2.96 under RedHat-7.0
+  2001-01-19_17	todo	reported by Dieter Schultschik
+  + synproto.c:sendcmd() line-531,537,542,548,549,554,567,594
+    531:fd, 537:fd, 542:fd, 548:fd, 549:index, 554:fd, 567:fd, 594:fd
+    `short unsigned int' is promoted to `int' when passed through `...'
+    (so you should pass `int' not `short unsigned int' to `va_arg')
+  + mgrproto.c similar problem
+  + generally avoid va_arg with sendcmd() etc, replace sendcmd(CMDfclosem,fd)
+    with e.g. sendCMDfclose(fd) would yield compile-time prototype checking
+  2001-01-29_13 done
++ improve ic35mgr
+  2001-01-12_20 todo
+  + mgrproto.c: recvmrsp() / MPDUrecv() discard checksum
+  + mgrtrans.c: protocol comments, identify,disconn,.. belong to mgrproto.c
+  + move backup protocol from mgrtrans.c to mgrproto.{c,h}
+    concentrate log,progress,errmsg separate from communication protocol
+  + move putxxx(),getxxx(),chksum() from mgrtrans.c,xxxproto.{c,h}
+    and also welcome() etc. to genproto.{c,h}
+  2001-01-24_03 +50%
+  + move _not_impl() from ic35mgr.c to util.{c,h}
+  + recvmrsp() always return mstate, not pdulen
+  + mgrproto.c: common structs for same PDUs
+  2001-01-29_12 +70%
+  + mgrproto.c: common convert direntry and FILE_INFO
+  + mgrproto.c: define iden/FILE_IDEN details, export size, how mismatch?
+  + mgrproto.h: move attribs,modes from mgrtrans.h (else mgrproto.c unusable)
+    for backward compatible #include mgrproto.h in mgrtrans.c
+  x mgrtrans.c: common struct for MMCDIR MMCFILE
+  x extract rcskvf() from ic35sync.c,ic35mgr.c to util.c
+    with VERSION imported rcskvf() is obsolete
+  2001-02-03_18 done
++ supply also vcc.c	problem found by Harald Becker, Michael Bruennert
+  2001-01-19_09 todo
+  supply also vcc.c for systems without or with bad bison/yacc
+  SuSE-7.0 yacc-91.7.30-220 is bad, need bison >= 1.25
+  2001-02-04_01 done
++ automake/autoconf
+  2000-12-29_02 todo	proposed by Norbert Kolb
+  * see Software-Release-Practice-HOWTO, GNU Coding Standards
+  * must unset CDPATH, else re-automake fails!
+  + configure.in Makefile.am, then run:
+    aclocal; autoheader; automake --add-missing --gnu; autoconf; ./configure
+  + re-org into dirs src/ docs/
+  + make CVS-tree, use .cvsignore
+  + AUTHORS
+  + THANKS or CREDITS
+  + NEWS: compact version info
+  + README: re-org like Software-Release-Practice-HOWTO suggests
+  x acconfig.h: ISODATE 	NOT NEEDED
+  + program-versions from VERSION,ISODATE, remove rcskvf
+    + step-1: do it with current Makefile
+    + build-info like gnotepad+
+    + fix also top-entry in logfiles
+  2001-02-05_03 done
++ README / more docs, e.g. restrictions & workarounds
+  2001-01-26_03 todo
+  + Korganizer: PRODID, workaround missing vCal properties (...)
+  + GnomeCal: PRODID, workaround missing vCal properties (...)
+  + GnomeCard: missiong X-PILOT-STAT support and workaround
+  + problem with bash eating backslash of ic35path
+  + errors/warnings with 'configure --enable-pedantic'
+  + compile problem with yacc (if vcc.y changed)
+  + no sync conflict resolve yet
+  + proprietary VMEMO format
+  2001-02-17_21 done
++ ic35mgr mmcget/mmcput check ic35path before connect
+  bug-report from Thomas Lichtenberg
+  2001-02-06_00 todo
+  valid ic35path:
+  + auto-translate leading anycase mmcard[12], lower to upper, '/' to '\'
+  + leading "MMCard[12]/"
+  + adjacent / or \ not allowed
+  + max 1 dot between '/' and '/' or end
+  + max 8 chars before dot
+  + max 3 chars after dot
+  tests (mail from Thomas Lichtenberg):
+  + ic35mgr mmcdel MMCard1\IC35\BITMAP\INDIANER.BMP
+  + ic35mgr mmcput MMCard1\TEST\TEST1.TXT test.txt
+  2001-02-18_07 done
++ correct com_simrecv(): dummy for non-logged receive bytes, adjacent "RD nn"
+  2001-01-04_05 todo
+  + err.corr: fill block from adjacent "RD nn" lines, dummy non-logged
+  x handle checksum problem due to dummy bytes
+    cannot, must patch simfile with expected checksum(s)
+  2001-02-18_23 done
++ configure --disable-logandcomsim
+  2001-02-25_20 todo	proposed by Harald Becker
+  + configure option for disable logging and simulation for production version
+    default enabled
+  + use macros LPRINTF(()), LOG_INIT(()), etc. to reduce codesize
+  2001-03-02_02 done
++ reduce priority when using busywait
+  2001-02-25_20 todo	proposed by Harald Becker
+  + use for restore,mmcput only, nice(+2), man 2 nice
+  + option "-n niceval" or "--nice niceval", default niceval 2
+    allowed for users 0..19 for root -20..19, 0 is normal prio
+  2001-03-03_04 done
++ autogen.sh script for generating configure, Makefile.in, etc.
+  2001-05-30_11 todo	problem report by Konrad Mader <konrad.mader@gmx.de>
+  2001-08-02_22 done

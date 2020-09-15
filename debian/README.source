@@ -1,0 +1,8 @@
+ic35link for Debian
+------------------
+
+Currently, every modifications to convince gcc of building this package are managed with quilt.
+
+
+ -- crt0mega <crt0mega@c-r-t.tk>  Tue, 15 Sep 2020 20:13:25 +0200
+

@@ -1,0 +1,248 @@
+	$Id: NEWS,v 1.18 2001/08/12 03:39:35 thosch Rel $
+	NEWS: release info about IC35Link
+	=================================
+
+2001-08-12	version 1.18	IC35LINK-1-18
+	long pending release with several improvements and corrections
+	according to suggestions and bug reports by users.
+	improvements:
+	- improved README: table of contents, restrictions, more explanations
+	- ic35mgr restore and MMC write 30% faster (proposal by Harald Becker)
+	- ic35sync, ic35mgr, vcaconv now support long options, e.g. "--help"
+	  info enquiry with "--help" or "--version" now returns exitcode 0
+	- new autogen.sh script for generate configure etc. after CVS checkout
+	  (thanks Konrad Mader for report about missing configure in CVS)
+	- new configure option "--disable-logandcomsim" for conditional compile
+	  without logging and com-simulation (proposal by Harald Becker)
+	- new configure options "--enable-ansi" and "--enable-pedantic"
+	bugfixes:
+	- fixed problem where ic35sync with many (ca. 860) addresses failed
+	  (thanks Konrad Mader for bug report "get_mod_flen failed")
+	- ic35sync now accepts also empty PIMfile(s), e.g. empty ic35.memo
+	  (thanks Malte Schmidt for bug report "ic35.memo: parse error")
+	- ic35mgr MMCard functions now check ic35path before accessing IC35
+	  e.g. warn if shell eat backslash (\) in unquoted MMCard1\test.txt
+	  (thanks Thomas Lichtenberg for bug report)
+	- restricted ic35mgr to max.blocksize 16350 found by experiments
+	- ic35sync, ic35mgr now abort on open failure of logfile or simfile
+	- fixed com-simulation for adjacent "RD nn" lines and non-logged bytes
+	- fixed compile problem util.c with Linux Mandrake-8.0 and SuSE-7.2
+	  (thanks Christian Theile, Karl Stroetmann for bug reports)
+	- corrected warnings from "--enable-ansi" and "--missing-prototypes"
+	- fixed all Makefile.am: maintainer-clean keeps only sources in CVS,
+	  install also README and COPYING, clean dependencies and versinfo.c
+
+2001-02-05	version 1.17	IC35LINK-1-17
+	package renamed to "ic35link" and automake/autoconf/CVS reorganization.
+	no changes in sources, programs are unchanged except for version.
+	sources,documents now reside in src,doc subdirectories respectively.
+
+2001-02-04	version 1.16	IC35SYNC-1-16
+	this is a bugfix and redesign release and is the last named "ic35sync".
+	(the package will be renamed to "ic35link" in the next release, when
+	 the reorganizations for automake/autoconf and public CVS are done.)
+	improvements and redesign:
+	- ic35sync,ic35mgr,vcaconv now report package version and build info
+	- distribution includes vcc.c to handle missing/bad 'bison' or 'yacc'
+	  (e.g. SuSE-7.0's yacc produced bad vcc.o, thanks Michael Bruennert)
+	- reworked and clearified the IC35 manager protocol documentation and
+	  implementation (see ic35mgr.txt, mgrtrans.*, mgrproto.*), refer to
+	  the IC35 SoftwareDevelopmentKit API MMCard functions in mgrproto.c
+	bugfixes in ic35mgr and ic35sync:
+	- fixed compile error RedHat-7.0 gcc-2.96 (thanks Dieter Schultschik)
+	- corrections for 'ic35mgr status' (thanks Michael Bruennert):
+	  mgrtrans.c:status() tries to get IC35 response instead of only wait
+	  mgrproto.c:MMCsend() sends blocklength with initial wait
+	  corrected output of MMCard2 label
+	- ic35mgr commands backup and restore show error messages on new line
+	- avoid failing 'ic35mgr restore ..' at "disconnect" by delay 3.25 sec
+	  after writedatabase() done
+	- avoid failure of 'ic35mgr mmcput file' with occasional slow IC35
+	  MMCard write with 3.5 sec timeout for length of response block
+	- corrected MMC closedir,closefile response PDUs having no status-word
+	- corrected to make 'ic35sync status' work also with simulation file
+
+2001-01-20	version 1.15	IC35SYNC-1-15
+	new IC35 manager 'ic35mgr' supports access of IC35 MMCard(s)
+	- command "mmcdir" lists contents of MMCard(s)
+	- commands "mmcget","mmcput","mmcdel" read,write,delete MMCard file
+	- commands "backup","restore" IC35 organizer database
+	- ic35mgr.txt now really describes the IC35 manager protocol
+	  (previously it was just extracts of Windows 'portmon' logfiles)
+	bugfixes in ic35sync and vcaconv:
+	- "ic35sync sync" now updates record if on IC35, else writes new record
+	- "vcaconv sortvca ic35.vcal" did produce empty output, fixed vobject.c
+	- fixed vcc.y compile warnings
+	- "vcaconv sortvca .." improved: shows properties in sort order sequence
+	todo:
+	- ic35mgr install application on IC35
+	- ic35sync initial sync does not yet write all records to IC35
+	  workaround: do "ic35sync import .." before first "ic35sync sync .."
+
+2000-12-28	version 1.14	IC35SYNC-1-14
+	ic35sync import,sync step-5 done: "sync" command, misc. improvements
+	- sync command for synchronize vCard,vCalendar format PIMdata with IC35
+	- corrected convert of PIM BDAY birthday to IC35 for yyyy-mm-dd format
+	- PIM multiple CATEGORIES now preserved by prepend category from IC35,
+	  single or standard of multiple CATEGORIES are replaced
+	- PIM fullname FN now preserved, IC35 updates first,last name into it
+	- put first 2 EMAIL entries from vCard into IC35 address Email1,Email2
+	- put unspecific telno to IC35 TelWork for "Business", else to TelHome
+	- map IC35 address "(def.)"s in VCARD.NOTE marked "(def1):","(def2):"
+	- conversion IC35 to/from PIM record does now yet delete record fields
+	- extracted data formats from dataio.c into separate modules:
+	  datatxt.c  text format (output only)
+	  databin.c  binary IC35 record format
+	  datavca.c  vCard,vCalendar format
+	  vcutil.c   vCard,vCalendar utilities
+	  vcutil.h   header for vCard,vCalendar utilities
+	fixes for gnomecard from gnome-pim_1.2.0:
+	- compare VCARD.REV against old reference date+time from IC35, because
+	  gnomecard does not maintain X-PILOTSTAT.
+	- write VCARD.REV:yyyy-mm-ddThh:mm:ss, because yyyymmddThhmmss was
+	  ignored by gnomecard.
+	fixes for gnomecal from gnome-pim_1.2.0:
+	- first line of VEVENT.SUMMARY to/from IC35 Summary, remaining lines
+	  to/from Notes, because gnomecal does not support VEVENT.DESCRIPTION
+	- keep unsupported property VTODO.DSTART marked in VTODO.DESCRIPTION
+	- add VEVENT,VTODO.CLASS:PUBLIC, else gnomecal would crash on edit
+	fixes for korganizer v1.1.1:
+	- put UID:IC35id-xxxxxxxx to vCard,vCalender record if no UID there.
+	- produce output vCard,vCal in same CRLF/NL-mode as found on input,
+	  as korganizer has NL-terminated lines in vCalendar.
+	- translate IC35 CRLF to/from PIM NL in NOTE and DESCRIPTION fields.
+	- keep unsupported properties VTODO.DSTART,DUE,CATEGORIES as marked
+	  lines in VTODO.DESCRIPTION
+	- korganizer supports only DALARM, map IC35 LED and Beep to/from it
+	vcaconv extensions:
+	- command "prvca" reports vCard/vCalendar parse error.
+	- command "sortvca" outputs sorted vCard,vCalendar to standard output.
+	- command "imphandy" appends vCards with category HANDY from vCard file
+	  to standard output, after import the result back into IC35 they are
+	  for upload to a mobile phone from IC35 addresses in category HANDY.
+	CAVEAT:
+	- no options for sync conflict resolve, PIMfile always overrides IC35!
+	- IC35 has no different times for LED,Beep alarm, DALARM takes priority
+	- vcaconv conversions do not transfer clean/modified record status
+	- memory leak in vobject.c: all setVObject_*_Value() do not free the
+	  previously attached dupStr()-allocated string value
+
+2000-12-17	version 1.13	IC35SYNC-1-13	(not released to public)
+	ic35sync import,sync step-4 done: "import" command, misc. improvements
+	- algorithm details described in ic35sync.c:ic35import(),ic35export()
+	- import command for vCard,vCalendar or binary format PIMdata into IC35
+	- status command (new) shows IC35 version, sysinfo, total,mod records
+	- export command improved:
+	  export into existing PIMfile(s), backup e.g. ic35vcal to ic35.vcal~
+	  map IC35 address fields "(def.)" to/from VCARD:NOTE marked lines
+	  change vCard,vCalendar record modified time only if record changed
+	  support DCREATED in vCalendar: creation time of VEVENT,VTODO record
+	  corrected VEVENT:AALARM,DLARM, were sometimes wrongly created
+	- support X-PILOTSTAT in vCard,vCal: 0=same, other=changed vs. IC35
+	- default format changed to "vca" for primary use vCard,vCalendar
+	- vcaconv may be used as filter with input/output from stdin/stdout
+	- fixed QUOTED-PRINTABLE problem with multi-field properties (like
+	  VCARD:N, VCARD:ADR): due to problem with parser vcc.y and for
+	  compatibility with other programs using the vCard,vCal output
+	  QUOTED-PRINTABLE is not used on multi-field properties.
+	  (otherwise the split into field sub-properties fails and the
+	  first field (e.g. VCARD:ADR:STREET) gets the string of ALL the
+	  fields (e.g. STREET,CITY,etc.) with ";" within it.)
+	todo: sync command, fix memory leak in vobject.c
+	  conversion IC35 to/from PIM record does not yet delete record fields,
+	  i.e. record on destination may differ and have fields not in source.
+	  may be delete field needed only for sync, because import/export are
+	  specified to not delete on destination.
+
+2000-12-07	version 1.12	IC35SYNC-1-12	(not released to public)
+	ic35sync import,sync step-3 done:
+	convert vCard,vCalendar format to IC35 record
+	ic35sync import,sync step-2 done:
+	new protocol functions for import,sync tested OK
+	new knowledge about import,sync from experiments
+	new features:
+	- vcaconv supports "vca2bin", new "bin2txt" conversions
+	- ic35log.sh supports new commands readrecrid,updatrec
+	  processes ic35sync logfiles, fragmented response readmodrec
+	- syntrans.{c,h}: connect() argument rdtime to retrieve value from IC35
+	corrections:
+	- corrected ic35addr_to_vcard(): set VCAdrProp if have any address field
+	- vcaconv.c,dataio.c: handle binfile records without data
+	- synproto.c: corrected CMDfgetmlen, CMDcategory, CMDsetdtime
+	documentation ic35sync.txt:
+	- marked uncertain topics with "???"
+	- experiments found new commands: read record by record-ID (01 05) and
+	  write record data update (01 09), keeps recID on IC35 unchanged
+	- new knowledge about open file, changeflag, write record
+	  first all read then write,del,commit, "date+time" may be any string
+	todo: ic35sync commands import,sync
+
+2000-12-01	version 1.11	IC35SYNC-1-11	(not released to public)
+	intermediate freeze after ic35sync import,sync step-1 done:
+	- new functions: set_date_time, category, get_mod_flen, read_mod_frec,
+	  write_frec, delete_frec, commit_frec
+	- IC35 record access functions ic35frec.{c,h}
+	- 4byte record-ID combined from file-id (MSB) and record-id (LSW)
+	- support last-modified-time for vCard,vCalendar
+	- protocol-analyser ic35log.sh replaces and extends ic35prot.awk
+	todo: test new funcs, vCard,vCal to IC35 record, commands import,sync
+
+2000-11-22	version 1.10	IC35SYNC-1-10
+	- ic35sync supports output IC35 PIM data in vCard,vCalendar format
+	  new option "-f format" and command,pimfile args replace "-o outfile"
+	  write date+time to logfile
+	- added vCard,vCalendar API: vcc.h vcc.y vobject.h vobject.c port.h
+	  from gnome-pim-1.2.0.tar.gz:gnome-pim-1.2.0/libversit/
+	  see ftp://ftp.gnome.org/pub/GNOME/stable/sources/gnome-pim/
+	  other sources for vCard,vCalendar API:
+	  - kpilot_3.1.10-1.0.tar.gz (based on KPilot 3.1b9)
+	    from ftp://kde.tdyc.com/pub/kde/debian/dists/potato/contrib/source/
+	    see also http://www.slac.com/pilone/kpilot_home/index.html
+	  - versit consortium' SDK for Windows DLLs
+	    from http://www.imc.org/pdi/sdkdllsr.zip
+	- restrictions of implemented vCard,vCalendar output:
+	  - strings with non-printable chars get "QUOTED-PRINTABLE" property
+	    uncertain if it should be "ENCODING=QUOTED-PRINTABLE"
+	  - strings with 8bit-chars also get "CHARSET=ISO-8859-1" property
+	    uncertain if this is compliant to standard, because vobject.h
+	    does not contain "CHARSET", but both "vCard Version 2.1" and
+	    "vCalendar Version 1.0" explicitely allow "Character Set"
+	  - IC35 "Memo" has no standard vCard,vCalendar format representation
+	    using proprietary extension of VMEMO records
+	- new vcaconv: vCard,vCalendar conversions, e.g. for offline tests
+	  with IC35 binary data
+	  moved IC35 file descriptions from syntrans.* to dataio.*
+	  to avoid vcaconv link needing syntrans.o,synproto.o etc.
+	- ic35sync.txt: corrected LED-,Beep-alarmflags
+	- Makefile: ask before overwrite distribution tar.gz
+	- syntrans.c: reset serial device on abort with Ctrl-C
+	- comio.c: correct comrecv(): fdsets undefined if select() returns -1
+	- avoid gcc warnings about rcsid[]s not used
+
+2000-11-19	version 1.9	IC35SYNC-1-9	(not released to public)
+	- added README, ic35sync.txt,ic35mgr.txt, ic35prot.awk
+	- Makefile: integrated help, target for tar.gz distribution
+	- syntrans.{c,h},ic35sync.c: export connect(), details internal
+	  abort on bad power and wrong password responses
+	  check for ready-reponse '\x80' from IC35
+	- ic35sync.c: write ic35sync version/rcsid to logfile
+	- util.{c,h}: log_init() interface changed (loglevel argument)
+	- ic35sync.txt: mention logfiles used for protocol analysis
+
+2000-11-07	version 1.8	IC35SYNC-1-8	(not released to public)
+	ic35sync.c split into modules
+
+2000-11-05	version 1.7	IC35SYNC-1-7
+	first usable version, read PIM data from IC35 tested OK.
+	CAVEAT:
+	- PIM data export in "home grown" format not compatible to anything
+	- cannot write PIM data to IC35, neither synchronize
+	- unsupported commands "set date+time", "category", "reset chgflag"
+	- ugly one-module-source
+
+2000-11-04	version 1.1
+	hacking finished, now for compile and tests ..
+
+2000-10-31
+	start hacking code
+

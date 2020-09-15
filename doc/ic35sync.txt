@@ -1,0 +1,846 @@
+	$Id: ic35sync.txt,v 1.10 2000/12/03 21:10:00 tsch Rel $
+	IC35-sync Protokoll
+	===================
+
+Inhalt
+------
+	Ueberblick
+	Level-1 Protokoll
+	Level-2 Protokoll
+	Level-3 Protokoll
+	Kommunikations-Ablauf
+	  identification
+	  power
+	  authentication
+	  date+time
+	  category
+	  read,write file
+	  disconnect
+	Zusammenfassung der PDUs
+	IC35 Record Felder
+	IC35Comm.dll Export Funktionen
+	Anhang: Logfiles der Protokoll-Analyse
+
+
+Ueberblick
+----------
+???	Unklarheiten ueber das IC35-sync Protokoll sind wie hier mit ???
+???	am Zeilenanfang markiert.
+
+	Die IC35-sync Protokoll-"Suite" folgt offenbar dem ISO Schichten-
+	modell: Untere Protokoll-"Level" kapseln Daten hoeherer Protokoll-
+	Level ein und transportieren sie.
+
+	Generell werden in allen Protokoll-Schichten Datenbloecke (oft,
+	aber nicht immer) kodiert nach dem Schema:
+	  ii ll ll <data>
+	Dabei bedeuten
+	  ii	  Identifikations des Datenblocks
+	  ll ll   Laenge: Anzahl Bytes ueber alles, d.h. incl. ii ll ll
+		  Kodierung mit niederwertigem Byte zuerst, gefolgt vom
+		  hoeherwertigen Byte.
+	  <data>  Datenblock Inhalt
+
+Level-1 Protokoll
+-----------------
+	Level-1 PDU Kodierung allgemein:
+	- ii ll ll <L2data> cc cc
+	  ii	  Identifikations der PDU
+	  ll ll   Laenge: Anzahl der Bytes in der PDU, LSB zuerst MSB zuletzt
+	  L2data  transportierte Level-2 PDU Daten
+	  cc cc   Checksum: 16bit arithmetische Summe der PDU Bytes, LSB,MSB
+	- ii
+	  kurze PDUs (nur Id) erscheinen nur von IC35 an PC.
+	Level-1 PDUs PC an IC35:
+	  01 03 00		    init    initiate data exchange
+	  02 ll ll <L2data> cc cc   datasel select which data to send
+	  04 03 00		    datareq request to send selected data
+	  05 03 00		    exit    terminate data exchange
+    	Level-1 PDUs IC35 an PC:
+	  F0			    ack0    acknowledge to init PDU
+	  F1			    ack1    acknowledge to datasel,exit PDUs
+	  F2 ll ll <L2data> cc cc   datarsp response to datareq PDU
+	Level-1 Kommunikation PC->IC35, PC<-IC35:
+	 -> command init
+	    01 03 00
+	 <- response ack0
+	    F0
+	 -> command select data
+	    02 ll ll <L2data> cc cc
+	 <- reponse ack1
+	    F1
+	 -> command request data
+	    04 03 00
+	 <- reponse data
+	    F2 ll ll <L2data> cc cc
+	 -> command exit
+	    05 03 00
+	 <- reponse ack1
+	    F1
+	Dieses Schema wird generell fuer den Transport der Level-2 Daten
+	benutzt.
+
+Level-2 Protokoll
+-----------------
+	ll ll	Laenge: Anzahl der Bytes in der Level-2 PDU (LSB,MSB)
+	L3data	transportierte Level-3 PDU Daten
+	Level-2 PDUs PC an IC35:
+	  80 ll ll <L3data>	identify
+	  02 ll ll <L3data>	command write (more)
+	  82 ll ll <L3data>	command write (last)
+	  83 ll ll <L3data>	command read
+	  81 03 00		disconnect
+	Level-2 PDUs IC35 an PC:
+	  20 ll ll <L3data>	response (more)
+	  A0 ll ll <L3data>	response (last)
+	  A0 03 00		response done
+	  90 03 00		response write more
+	Transaktionen in hoeheren Schichten brauchen ggf. mehrere Blocks.
+	Soweit noch ein Block folgt werden die "(more)" PDUs benutzt,
+	fuer den letzten (oder einzigen) Block die "(last)" PDUs.
+
+Level-3 Protokoll
+-----------------
+	ll ll	Laenge: Anzahl der Bytes in der Level-2 PDU (LSB,MSB)
+	L3data	transportierte Level-3 PDU Daten
+	Level-3 PDUs PC an IC35:
+	  10 00 64 00 4A ll ll <L4data>	identify request
+	  48 ll ll <L4data>		command1 (more)
+	  49 ll ll <L4data>		command2 (last)
+	Level-3 PDUs IC35 an PC:
+	  10 00 D0 07 4A ll ll <L4data> identify response
+	  48 ll ll <L4data>		response1 (more)
+	  49 ll ll <L4data>		response2 (last)
+	Transaktionen in hoeheren Schichten brauchen ggf. mehrere Blocks.
+	Soweit noch ein Block folgt werden die "(more)" PDUs benutzt,
+	fuer den letzten (oder einzigen) Block die "(last)" PDUs.
+
+Kommunikations-Ablauf
+---------------------
+	Die Kommunikation zwischen PC und IC35 geschieht in zwei Phasen:
+	- Welcome
+	  - Die Leitungsparameter fuer die Kommunikation zwischen PC und
+	    IC35 sind Baudrate 115200, No parity, 8 databits, 2 stopbits.
+	  - Der PC sendet wiederholt einzelne Zeichen "A" (hex 41) bis vom
+	    IC35 "WELCOME" (hex 57 45 4C 43 4F  4D 45) empfangen wird.
+	  - Der PC sendet noch einmal ein Zeichen "A", der IC35 antwortet
+	    mit einem Byte hex 80.
+	  - Unter Windows-98/-NT setzt der PC das DTR-Signal auf "AUS"
+	    und schliesst den COM-Port. Nach ca. 0.015 sec oeffnet der
+	    PC den COM-Port erneut mit Baudrate 115200, setzt das RTS-
+	    Signal auf "AUS" und DTR-Signal auf "EIN", und stellt die
+	    Leitungsparameter: No parity, 8 databits, 2 stopbits.
+	    Dieses Verhalten scheint unnoetig, unter Linux ist es fuer
+	    die Kommunikation nicht notwendig.
+  	  - PC setzt Timeouts: RC:500 und WC:500, vermutlich bedeutet das
+	    Read Character und Write Character Timeout jeweils 500 ms.
+	  Kommunikation der Welcome Phase:
+	    -> 41
+	    timeout 1.15 sec
+	    -> 41
+	    <- "WELCOME"
+	    -> 41
+	    <- 80
+	- Datenaustausch
+	  In dieser Phase geschieht der Datenaustausch generell gemaess
+	  dem Level-1 Protokoll.
+	Die Datenaustausch-Phase besteht aus folgenden Abschnitten:
+	- identification
+	- power
+	- authentication
+	- date+time
+	- category
+	- read,write "Addresses", "Memo", "Schedule", "To Do List"
+	- disconnect
+
+Im Folgenden ist nur die Level-2 Kommunikation notiert, die Uebertragung
+der Level-2 Daten geschieht wie oben beschrieben mit dem Level-1 Protokoll.
+Soweit die Level-2,-3 Header der generellen Form entsprechen, sind sie
+in Kurzform L2id,L3id notiert, andernfalls explizit
+
+identification
+--------------
+	Kommunikation PC->IC35, PC<-IC35:
+	 -> identify request
+	    80 26 00				# L2-header
+	    10 00 64 00  4A 1F 00		# L3-header
+	    "INVENTEC CORPORATION PRODUCT"	# L4-data
+	 <- identify response
+	    A0 29 00				# L2-header
+	    10 00 D0 07  4A 22 00		# L3-header
+	    "INVENTEC CORPORATION DCS15 1.28"	# L4-data
+	Der L2-header entspricht der generellen Form (80 ll ll).
+???	Dem L3-header der "identify" PDUs in der generellen Form (4A ll ll)
+???	gehen jeweils 4 Bytes Daten mit unklarer Bedeutung voraus.
+
+power
+-----
+	Kommunikation PC->IC35, PC<-IC35:
+	 -> power request
+	    82,49  03 01 "Power" 00 00 00
+	 <- power response
+	    A0,49  03 01
+
+authentication
+--------------
+	Kommunikation PC->IC35, PC<-IC35:
+	 -> authenticate request
+	    82,49  03 00 [password]
+	 <- authenticate response right password
+	    A0,49  01 01
+	oder
+	 <- authenticate response wrong password
+	    A0,49  00 01
+	[password] ist das IC35 Kennwort als ASCII Klartext.
+	IC35 sendet "response wrong password" nur dann, wenn auf dem IC35
+	die Kennwort-Abfrage beim Einschalten aktiviert ist.
+
+date+time
+---------
+	Kommunikation PC->IC35, PC<-IC35:
+	 -> command get date+time
+	    83,49  02 00 00
+	 <- response date+time
+	    A0,49  [mmddyyyyhhmmss] 00 00
+	 -> command set date+time
+	    82,49  02 01 00 [mmddyyyyhhmmss] 00 00
+	 <- response done
+	    A0
+	[mmddyyyyhhmmss] sind Monat(mm), Tag(dd), Jahr(yyyy), Stunde(hh),
+	Minute(mm), Sekunde(ss) jeweils in ASCII Ziffern (hex 30..39).
+	"set date+time" passiert offenbar nicht immer, es taucht nur auf
+	in Simple_hex.log, Portmon_export.log, Portmon_neukat2.log, aber
+	nicht in Import1.log.
+???	Wenn "set date+time" passiert, dann nach "open file Addresses"
+???	vor "get filelength Addresses". Ob das so noetig ist, ist unklar,
+???	einfacher zu implementieren ist es vor der "read,write file"
+???	Phase.
+	"get date+time" liefert 00-Bytes fuer [mmddyyyyhhmmss], wenn noch
+	nie ein "set date+time" zum IC35 geschehen ist.
+	Laut Experimenten laesst IC35 beliebigen Text bis 16 Zeichen zu.
+	Vermutlich sind die "get,set date+time" Kommandos gedacht fuer
+	die Hinterlegung eines Sync/Import Stempels vom PC im IC35 (auch
+	die Namen "AdsReadSysInfo" und "AdsWriteSysInfo" der IC35Comm.dll
+	Funktionen stuetzen diese Vermutung), IC35sync/Windows benutzt
+	dafuer offenbar einen Zeitstempel.
+
+category
+--------
+	Kommunikation PC->IC35, PC<-IC35:
+	 -> command set category
+	    82,49  03 02 [category]
+	    [category] wird mit 00 Bytes bis zur Laenge 8 Bytes aufgefuellt.
+???	 <- response category ok
+???	    A0,49  xx 01
+???	    Die Bedeutung des Feldes xx ist unklar, es nimmt die Werte 01
+???	    (Portmon_export.log) und 00 (Import.log aus Import.tar.gz) an.
+	Wenn die "category" Phase vorkommt, findet sie nach "set date+time"
+	statt, d.h. auch innerhalb des Filezugriffs auf Addresses.
+???	Die Semantik der "category" Phase unklar.
+
+read,write file
+---------------
+	Der Zugriff auf die Files "Addresses", "Memo", "Schedule" und
+	"To Do List" ist beispielhaft fuer "Addresses" notiert.
+	Der Filezugriff besteht aus den Phasen:
+	- open file
+	  liefert filedescriptor, der fuer die uebrigen Phasen benutzt wird
+	- get filelength (2 Varianten)
+	  liefert die Anzahl der zu lesenden records
+	- read file record(s)
+	  liefert record daten, ggf. in mehreren Bloecken
+	- write file record(s)
+	  optional, ggf. in mehreren Bloecken
+	- optional delete file record(s)
+	- optional reset change flag(s)
+	- close file
+
+    open file
+	 -> command open file
+	    82,49  00 02  00 00 00 00 00 00 00 0B 00 00 00  09 "Addresses" 02
+		   cmd__		       l1	    l2  filename_
+	    l2 ist Laenge des filename, l1 = l2 + 2
+	 <- response fd=0001
+	    A0,49  01 00
+		   fd___
+	Der filedescriptor fd wird anschliessend fuer den Zugriff benutzt.
+	Der Filename ist ziemlich egal, es wird nur der erste Buchstabe
+	unabhaengig von Gross- oder Kleinschreibung verglichen, d.h. es
+	wird fuer 'A','a' "Addresses", 'M','m' "Memo", 'T','t' "To Do List"
+	und fuer alle anderen Zeichen das File "Schedule" geoeffnet.
+
+    get filelength 03: total number of records
+	Variante-1 aus Import1.log (command 01 03)
+	 -> command get filelength fd=0001
+	    83,49  01 03  01 00  00 00 00 00
+		   cmd__  fd___
+	 <- response filelength n=000B records
+	    A0,49  0B 00
+		   n____
+	Diese Variante wird bei "import" und "export" benutzt.
+    get filelength 04: number of modified records
+	 -> command get filelength fd=0001
+	    83,49  01 04  01 00  00 00 00 00
+		   cmd__  fd___
+	 <- response n=0000 records
+	    A0,49  00 00
+		   n____
+	Diese Variante wird bei "sync" benutzt. Sie liefert die Anzahl
+	der manuell auf dem IC35 modifizierten Records, d.h. veraenderte,
+	neu hinzugefuegte und insbesondere auch geloeschte.
+
+    read file record by index
+	 -> command read record fd=0001 idx=0000
+	    83,49  01 06  01 00  00 00  00 00
+		   cmd__  fd___  idx__
+	 <- response record data (more)
+	    20,48  01 00 00 05 80 <flengths> <fdata>
+		   ri___    fi ch
+	 -> command read more
+	    83
+	 <- response record data (more)
+	    20,48  <fdata>
+	 -> command read more
+	    83
+	 <- response record data (last)
+	    A0,49  <fdata>
+	Die Records werden index-orientiert gelesen, der Index idx nimmt
+	Werte 0 bis n - 1 (filelength n).
+    read next modified record
+	(Beispiele aus Delete.tar.gz:NeueDatenSync_171100.log File "Memo")
+	 -> command read next modified record
+	    83,49  01 07  03 00  00 00  00 00
+		   cmd__  fd___
+	 <- response record data (last)		Beispiel geloeschter Record
+	    A0,49  03 00 00 06 20
+		   ri___    fi ch
+	 -> command read next modified record
+	    83,49  01 07  03 00  00 00  00 00
+		   cmd__  fd___
+	 <- response record data (last)		Beispiel veraenderter Record
+	    A0,49  05 00 00 06 80 <flengths> <fdata>
+		   ri___    fi ch
+    read file record by record-ID
+	(Beispiele aus Experimenten mit File "Memo")
+	 -> command read record by record-ID
+	    83,49  01 05  03 00  05 00  00 06
+		   cmd__  fd___  ri___     fi
+	 <- response record data (last)		Beispiel vorhandener Record
+	    A0,49  05 00 00 06 80 <flengths> <fdata>
+		   ri___    fi ch
+	    Im Erfolgsfall enthaelt die Antwort die angeforderte RecordId
+	    und gueltige Feldlaengen und Daten.
+	 -> command read record by record-ID
+	    83,49  01 05  03 00  EE 78  00 06
+		   cmd__  fd___  ri___     fi
+	 <- response record data (last)		Bsp. nicht vorhandener Record
+	    A0,49  3E 81 D3 0D 60 <flengths>
+		   ri___    fi ch
+	    Ist der Record mit der spezifizierten RecordId im IC35 nicht
+	    vorhanden, so enthaelt die Antwort eine ungueltige RecordId,
+	    ungueltige Feldlaengen und keine Felddaten.
+	Im "response record data" ist fi die FileId und ri die RecordId
+	auf dem IC35. Beide zusammen ergeben identifizieren den Record
+	im IC35 global eindeutig.
+???	Ob die RecordId ri sich auf 3 Bytes erstreckt wurde mangels
+???	Geduld (es waeren >65536 Records zu erzeugen) nicht geklaert,
+???	die Implementation unter Linux nimmt dies an.
+	Das Feld ch ist ein Aenderungskennzeichen (CHangeflag):
+	  80	Record im IC35 neu erzeugt oder von anderem kopiert
+	  40	Record im IC35 veraendert
+	  20	Record im IC35 geloescht (ohne <flengths>,<fdata>)
+	  00	keine Aenderung in diesem Record
+	Das Aenderungskennzeichen wird nur durch manuelle Aenderungen
+	im IC35 auf ch!=00 gesetzt, mit "write file record" neu erzeugte
+	haben ch=00, mit "delete file record" geloeschte verschwinden
+	vollstaendig.
+	Nur von "read next modified record" werden Records mit ch=20
+	geliefert, bei "read record by index" tauchen sie nicht auf.
+	Der gelesene Record wird falls noetig in mehreren Bloecken
+	uebertragen, vom IC35 haben alle Bloecke bis auf den letzten
+	L2id=20 und L3id=48, der letzte Block hat L2id=A0 und L3id=49.
+	Ein Record besteht aus einer Tabelle <flengths> von Feldlaengen
+	(Bytes) gefolgt von den Felddaten <fdata>. Die Inhalte der Felder
+	ergeben sich entsprechend den Feldlaengen aus den Felddaten.
+	Filename   Feldanzahl   fi
+	  Addresses	21	05
+	  Memo		 4	06
+	  Schedule	10	08
+	  To Do List	 8	07
+	Zumindest fuer "read next modified record" muessen erst soviel
+	Leseoperationen, wie "get number of modified record" lieferte,
+	durchgefuehrt werden, bevor "write record", "delete record" oder
+	"reset change flag" ausgefuehrt wird. Andernfalls geschieht
+	Undefiniertes, z.B. wurde ein read response ohne Record-Daten
+	mit ri=01 07 03 fi=00 ch=00 beobachtet.
+
+    write file record
+	 -> command write record (more) fd=0001
+	    02,48  01 08  01 00  00 00 00 00 51 00 00 00 00 96 00 00 00 <flengths> <fdata>
+		   cmd__  fd___              w1 w2 w3       lr
+		   01 08  01 00  00 00 00 00 51 00 00 00 00 96 00 00 00   Addresses
+		   01 08  03 00  00 00 00 00 58 48 99 00 00 16 00 00 00   Memo
+		   01 08  03 00  00 00 00 00 60 16 99 00 00 16 00 00 00   Memo
+		   01 08  00 00  00 00 00 00 10 00 00 00 00 32 00 00 00   Schedule
+		   01 08  02 00  00 00 00 00 10 00 00 00 00 46 00 00 00   To Do List
+	    lr ist Gesamtlaenge des Record, d.h. Anzahl der Feldlaengen
+	    (Bytes in <flengths>) plus Summe der Feldlaengen (Bytes in
+	    <fdata>).
+???	    Die Bedeutung der "write record" PDU-Felder w1, w2, w3 ist unklar.
+	 <- reponse write more
+	    90
+	 -> command write record (last)
+	    82,49  <fdata>
+	 <- response write ok
+	    A0,49  12 00 00 05
+		   ri___    fi
+		   12 00 00 05	Addresses
+		   03 00 00 06	Memo
+		   1B 00 00 08	Schedule
+		   02 00 00 07	To Do List
+	Im "response write ok" sind fi die FileId und ri die RecordId,
+	die der neue Record im IC35 erhalten hat. Es wird dabei immer ein
+	neuer Record mit neuer RecordId erzeugt. Das Modifizieren unter
+	Beibehaltung der RecordId ist mit "update file record" moeglich.
+	Der neu erzeugte Record erhaelt Aenderungskennzeichen ch=00 (s.o.).
+	Der geschriebene Record wird falls noetig in mehreren Bloecken
+	uebertragen, alle bis auf den letzten Block habe L2id=02 und
+	und L3id=48, der letzte Block hat L2id=82 und L3id=49.
+    update file record
+	 -> command update record (last) fd=0003 recid=06000005
+	    82,49  01 09  03 00  05 00 00 06 60 19 99 00 00 46 00 00 00 <flengths> <fdata>
+		   cmd__  fd___  ri___    fi w1 w2 w3       lr
+	    ri ist die RecordId und fi die FileId auf dem IC35.
+???	    w1,w2,w3 sind in der "update record" PDU die gleichen Felder
+???	    wie in der "write record" PDU mit ebenso unklarer Bedeutung.
+	    lr ist Gesamtlaenge des Record, d.h. Anzahl der Feldlaengen
+	    (Bytes in <flengths>) plus Summe der Feldlaengen (Bytes in
+	    <fdata>).
+	 <- response write ok
+	    A0,49  05 00 00 06
+		   ri___    fi
+	Im Unterschied zu "write record" wird die RecordId auf dem IC35
+	hier beibehalten. Ansonsten verhaelt sich "update record" genauso
+	wie "write record" (Fragmentierung, Aenderungskennzeichen etc.).
+
+    delete record
+	(Beispiele aus Delete.tar.gz:NeueDatenSync_171100.log File "Memo")
+	 -> command delete record
+	    83,49  01 02  03 00  05 00  00 06
+		   cmd__  fd___  ri___     fi
+	 <- response done
+	    A0
+	Der Record wird im IC35 direkt geloescht, d.h. er wird nicht mit
+	Aenderungskennzeichen ch=20 (s.o.) auftauchen. Im Gegensatz dazu
+	bleiben im IC35 manuell geloeschte Records mit ch=20 erhalten,
+	bis sie mit "reset record change flag" bestaetigt werden und dann
+	tatsaechlich verschwinden.
+
+    reset record change flag
+	 -> command reset record change flag
+	    82,49  01 0A  01 00  11 00 00 05
+		   cmd__  fd___  ri___    fi
+	 <- response done
+	    A0
+	Das Aenderungskennzeichen des Record wird im IC35 zurueckgesetzt
+	auf ch=00, d.h. Record unveraendert.
+	Records mit ch=20 (ohne Daten, Reste von manuellem Loeschen auf
+	dem IC35) werden endgueltig entfernt.
+
+    close file
+	 -> command close file fd=0001
+	    82,49  00 03  01 00  00 00 00 00
+		   cmd__  fd___
+	 <- response done
+	    A0
+
+disconnect
+----------
+	Kommunikation PC->IC35, PC<-IC35:
+	 -> command disconnect
+	    81 03 00				# L2-header
+	 <- response done
+	    A0 03 00				# L2-header
+	Beim Verbindungsabbau werden nur Level-2 Header ohne Daten
+	uebertragen, d.h. Level-3 wird nicht benutzt.
+
+Zusammenfassung der PDUs
+------------------------
+    Level-4 commands
+	00	file commands
+	00 02	  open file
+	00 03	  close file
+	01	record commands
+	01 02	  delete record
+	01 03	  get filelength: total number of records
+	01 04	  get filelength: number of modified records
+	01 05	  read file record by record-ID
+	01 06	  read file record by index
+	01 07	  read next modified record
+	01 08	  write file record
+	01 09	  update file record
+	01 0A	  reset file record change-flag
+	02	date+time
+	02 00	  get date+time
+	02 01	  set date+time
+	03	power,passwd,category
+	03 00	  passwd
+	03 01	  power
+	03 02	  category
+
+    commands
+	- identify
+	  80, 10 00 64 00 ,4A  "INVENTEC CORPORATION PRODUCT"
+	- disconnect
+	  81
+	- power
+	  82,49  03 01  "Power" 00 00 00
+	- authenticate
+	  82,49  03 00  [password]
+	- get date+time
+	  83,49  02 00  00
+	- set date+time
+	  82,49  02 01  00 [mmddyyyyhhmmss] 00 00
+	- category
+	  82,49  03 02  [category] 00
+	- open file
+	  82,49  00 02  00 00 00 00 00 00 00 lf+2 00 00 00 lf [filename] 02
+	- close file
+	  82,49  00 03  fd_.. 00 00 00 00
+	- get filelength: total number of records
+	  83,49  01 03  fd_.. 00 00 00 00
+	- get filelength: number of modified records
+	  83,49  01 04  fd_.. 00 00 00 00
+	- read filerecord by record-ID
+	  83,49  01 05  fd_.. ri_.. 00 fi
+	- read filerecord by index
+	  83,49  01 06  fd_.. in_dx 00 00
+	- read next modified filerecord
+	  83,49  01 07  fd_.. 00 00 00 00
+	- read more
+	  83
+	- write filerecord (more)
+	  02,48  01 08  fd_.. 00 00 00 00 w1 w2 w3 00 00 lr 00 00 00 <flens> <fdata>
+	- update filerecord (more)
+	  02,48  01 09  fd_.. ri_.. 00 fi w1 w2 w3 00 00 lr 00 00 00 <flens> <fdata>
+	  write filerecord (last)
+	  82,49	 <fdata>
+	- delete record
+	  83,49  01 02  fd_.. ri_.. 00 fi
+	- reset filerecord change-flag
+	  82,49  01 0A  fd_.. ri_.. 00 fi
+
+    responses
+	- identify
+	  A0, 10 00 D0 07 ,4A  "INVENTEC CORPORATION DCS15 1.28"
+	- disconnect
+	  A0
+	- power
+	  A0,49  03 01
+	- authenticate ok
+	  A0,49  01 01
+	- get date+time
+	  A0,49  [mmddyyyyhhmmss] 00 00
+	- set date+time
+	  A0
+	- category
+	  A0,49  xx 01
+	  record fields:
+	  - xx      unknown meaning, values: 00, 01
+	- open file
+	  A0,49  fd_..
+	- close file
+	  A0
+	- get filelength
+	  A0,49  n._..
+	- read filerecord (more)
+	  20,48  ri_.. 00 fi ch <flens> <fdata>
+	  read filerecord (last)
+	  A0,49  <fdata>
+	  record fields:
+	  - ri_..   record-id on IC35
+	  - fi	    file-id on IC35
+	  - ch	    change-flag: 00, 80, 40 or 20
+	- write/update filerecord
+	  A0,49  ri_.. 00 fi
+	- write more
+	  90
+	- delete record
+	  A0
+	- reset record changeflag
+	  A0
+
+
+IC35 Record Felder
+-----------------
+	Die nachfolgenden Tabellen zu den IC35 Files (Addresses, Memo,
+	Schedule, ToDoList) enthalten jeweils den 0-relativen Feld-
+	Index, die Feld-Bedeutung, die maximale Feld-Laenge und ggf.
+	Erlaeuterung zum Format.
+	Die maximalen Feld-Laengen sind dokumentiert bei Siemens unter
+	http://www.ic.siemens.com/mySiemens/lowres/content/
+	     ap_content_moreinfocontainer_lr/1,1908,2_IC35_4_0_61_0_2183,00.html
+???	Der Zweck der "category-id"s ist unklar, jede neu angelegte
+???	Kategorie erhaelt eine neue "category-id".
+
+    Addresses (21 Felder)
+	 0 Vorname	 50
+	 1 Nachname	 50
+	 2 Firma	128
+	 3 Tel.Privat	 48
+	 4 Tel.Buero	 48
+	 5 Handy	 48
+	 6 Fax		 48
+	 7 Strasse	128
+	 8 Ort		 60
+	 9 PLZ		 10
+	10 Bundesland	 40
+	11 Land		 15
+	12 E-Mail1	 80
+	13 E-Mail2	 80
+	14 URL		128
+	15 Geburtstag	 10
+	16 Notizen	255
+	17 category-id	  1 bin
+	18 (def.)1	128
+	19 (def.)2	128
+	20 category	  8
+      category-id, -name
+	02 Address  (owner data)
+	06 Business
+	0B Personal
+	0C Unfiled
+	13 S35telb
+	14 S35SIM.1
+	15 S35SIM.2
+	16 newcateg
+
+    Memo (4 Felder)
+	0 Betreff	 60
+	1 Notizen	255
+	2 category-id	  1 bin
+	3 category	  8
+      category-id, -name
+	0D Business
+	0E Personal
+	0F Unfiled
+	17 n.memcat
+
+    Schedule (10 Felder)
+	Schedule Records enthalten weder category-id noch category Text.
+	0 Betreff	 60
+	1 Start(Datum)	  8 ?	[yyyymmdd]
+	2 Start(Zeit)	  6 ?	[hhmm]":1"
+	3 Ende(Zeit)	  6 ?	[hhmm]"<1"
+	4 AlrmBef	  1 bin
+			00=no 01=now 02=1min 03=5min 04=10min 05=30min
+			06=1hour 07=2hour 08=10hour 09=1day 0A=2day
+	5 Notizen	255
+	6 AlrmRep(Byte)	  1 bin	lb00-0iii
+			l: 0=LED 1=noLED, b: 0=beep 1=nobeep
+			iii: 0=norepeat 1=day 2=week 3=monwday 4=year 5=monmday
+	7 Ende(Datum)	  8 ?	[yyyymmdd]
+	8 EndRepeat	  8 ?	[yyyymmdd]
+	9 RepAlln(Byte)	  1 bin	nn
+			repeat all nn days/weeks/mwdays/years/mmdays
+      Alarm/Repeat-Flags
+	f4 f6 f9	repeat  alarm bef  LED beep
+	0A C0 01	no	  2 day	    no no
+	07 C0 01	no	  2 hour    no no
+	06 C4 01	1 year	  1 hour    no no
+	05 C5 02	2 mon md  30 min    no no
+	04 C3 01	1 mon wd  10 min    no no
+	03 82 03	3 week	  5 min     no yes
+	02 41 02	2 day	  1 min    yes no
+	01 01 01	1 day	  now	   yes yes
+	00 C2 01	1 week	  none	    no no
+
+    ToDoList (8 Felder)
+	0 Start		  8 ?	[yyyymmdd]
+	1 Ende		  8 ?	[yyyymmdd]
+	2 Erledigt	  1 bin	00=N 01=J
+	3 Prioritaet	  1 bin	00=low 01=normal 02=high
+	4 Betreff	 60
+	5 Notizen	255
+	6 category-id	  1 bin
+	7 category	  8
+      category-id, -name
+	10 Business
+	11 Personal
+	12 Unfiled
+
+    category-ids
+	02 Address  Address  (owner data)
+	06 Business Address
+	0B Personal Address
+	0C Unfiled  Address
+	0D Business Memo
+	0E Personal Memo
+	0F Unfiled  Memo
+	10 Business ToDoList
+	11 Personal ToDoList
+	12 Unfiled  ToDoList
+	13 S35telb  Address
+	14 S35SIM.1 Address
+	15 S35SIM.2 Address
+	16 newcateg Address
+	17 n.memcat Memo
+
+
+IC35Comm.dll Export Funktionen
+------------------------------
+Addr	IC35Comm.dll Export Funktion	Aequivalent in ic35sync/Linux
++-------+-------------------------------+----------------------------
+3859	AdsBeginSession			welcome
+3BEB	AdsCancelEndSession
+11AE	AdsCloseDatabase		close_file ?
+3FAD	AdsCloseHandle			close_file ?
+1B87	AdsCommitRecord			commit_frec
+1341	AdsDeleteAllRecords
+14CE	AdsDeleteRecord			delete_frec
+3B89	AdsEndSession			disconnect
+1629	AdsGetModifiedRecordCount	get_mod_flen
+1585	AdsGetRecordCount		get_flen
+1D84	AdsLocalDeleteRecord
+1D00	AdsLocalModifyRecord
+1C3E	AdsLocalNewRecord
+1000	AdsOpenDatabase			open_file ?
+13FA	AdsPurgeDeleteRecords
+126D	AdsReadCatagoryData		category ?
+189B	AdsReadNextModifiedRecord	read_mod_frec
+16CD	AdsReadRecordByID		read_id_frec
+1701	AdsReadRecordByIndex		read_frec
+1E3B	AdsReadSysInfo			get_date_time
+1F7F	AdsSendCommand			sendcmd,recvrsp
+37D0	AdsSetCancelHandle
+1B03	AdsUpdateRecord			update_frec
+1A0C	AdsWriteRecord			write_frec
+1ED5	AdsWriteSysInfo			set_date_time ?
+37EB	AdsDeviceVersion		identify
+3804	AdsOpenComPort			com_open
+
+
+Anhang: Logfiles der Protokoll-Analyse
+--------------------------------------
+- Simple_hex.log			 +setdt -cat modrec -write -del -res
+  get date+time 2000-08-20 21:28:10
+  set date+time 2000-08-20 21:31:49
+  no category
+  get modified record count (01 04), all files return 0 records
+  no writerec
+  no reset changeflag
+- Portmon_export.log			 +setdt +cat allrec -write -del -res
+  get date+time 2000-09-10 18:28:42
+  set date+time 2000-09-10 18:30:35
+  category Addresses (rsp 01 01)
+  get record count (01 03)
+  no writerec
+  no reset changeflag
+- Import.tar.gz:Import1.log		 -setdt -cat allrec +write -del -res
+  get date+time 2000-10-24 21:44:48
+  no set date+time
+  get record count (01 03)
+  no category
+  no reset changeflag
+  writerec Addresses(1x),Memo(1x),Schedule(1x),ToDoList(1x)
+- Import.tar.gz:Import.log		 +setdt +cat allrec +write -del +res
+  get date+time 2000-10-30 20:32:31
+  set date+time 2000-10-30 20:59:13
+  category Addresses(rsp 00 01), Memo(rsp 01 01), ToDoList(rsp 01 01)
+  get record count (01 03)
+  reset changeflag Addresses, Memo, Schedule, ToDoList
+  writerec Addresses(1x), Schedule(2x)
+- Delete.tar.gz:Export_171100.log	 -setdt -cat allrec -write -del -res
+    Ich habe in Outlook die Daten komplett geloescht und die
+    IC35-Sync-Software zurueckgesetzt.
+    Dann habe ich die Daten des IC35 nach Outlook importiert.
+  get date+time 2000-11-01 17:42:13
+  no set date+time
+  no category
+  get record count (01 03)
+  no writerec
+  no reset changeflag
+- Delete.tar.gz:InitSync_171100.log	 +setdt +cat allrec -write -del +res
+    [Dann habe die Daten des IC35 nach Outlook importiert] und
+    anschliessend noch einmal einen normalen Sync durchgefuehrt.
+  get date+time 2000-11-01 17:42:13
+  set date+time 2000-11-17 23:10:51
+  category Addressses(rsp 00 01, 01 01), Memo(rsp 01 01), ToDoList(rsp 01 01)
+  get record count (01 03)
+  no writerec
+  reset changeflag Memo,Schedule,ToDoList
+- Delete.tar.gz:NeueDatenSync_171100.log +setdt +cat modrec +write +del +res
+    Anschliessendhabe ich fuer jede Kategorie je 4 Testdatensaetze
+    angelegt: Je zwei in Outlook und je zwei im IC35.
+    Im Betreff des Datensatzes steht dieser Erzeugungsort an erster Stelle
+    (z.B Testadresse Outlook-IC35).
+    An zweiter Stelle steht das Teil, mit dem der Datensatz geloescht wird.
+    Anschliessend habe ich einen Sync durchgefuehrt, damit hatten der
+    IC35 und Outlook jeweils alle 4 Datensaetze.
+    addr  0018 IC35-IC35
+    addr  0017 IC35-Outl
+    addr  0019 Outl-Outl
+    addr  001A Outl-IC35
+    memo  0005 IC35-IC35
+    memo  0004 IC35-Outl
+    memo  0006 Outl-IC35
+    memo  0007 Outl-Outl
+    sched 0025 IC35-IC35
+    sched 0024 IC35-Outl
+    sched 0026 Outl-Outl
+    sched 0027 Outl-IC35
+    todo  000E IC35-IC35
+    todo  000D IC35-Outl
+    todo  000F Outl-Outl
+    todo  0010 Outl-IC35
+  get date+time 2000-11-17 23:22:45
+  set date+time 2000-11-17 23:23:34
+  category Addressses, Memo, ToDoList
+  get record count Addresses(01 03) Memo(01 04) Schedule(01 04) ToDoList(01 04)
+  reset changeflag Addresses, Memo, Schedule, ToDoList
+  writerec Addresses(3x), Memo(2x), Schedule(2x), ToDoList(2x)
+  readrec Addresses, readrecmod Memo, Schedule, ToDoList
+  deleterec Memo, Schedule
+- Delete.tar.gz:DeleteSync_171100.log	 +setdt +cat modrec -write +del +res
+    Anschliessend habe ich auf jedem Teil pro Kategorie wieder je zwei
+    Datensaetze geloescht und zwar die, die durch den hinteren Namensteil
+    gekennzeichnet waren (Nur bei Testadresse IC35-* ist mir ein Fehler
+    passiert, dort ist es genau umgekehrt -Outlook wurde auf dem IC35
+    geloescht und umgekehrt). Dann folgt wieder ein Sync (DeleteSync), bei
+    dem tatsaechlich aus beiden Teilen alle Datensaetze verschwunden sind.
+    addr  0018 IC35-IC35         0102-1
+    addr  0017 IC35-Outl  0107-1 0102-3
+    addr  0019 Outl-Outl         0102-2
+    addr  001A Outl-IC35  0107-2 0102-4
+	  0002		  0107-3 0102-5  Verwenden Sie ...
+	  0012		  0107-4 0102-6  Testnachname, Testvorname
+	  0011		  0107-5 0102-7  Haid, Beppo
+    memo  0005 IC35-IC35  0107-2 0102-4
+    memo  0004 IC35-Outl	 0102-1
+    memo  0006 Outl-IC35  0107-1 0102-3
+    memo  0007 Outl-Outl	 0102-2
+    sched 0025 IC35-IC35  0107-2 0102-4
+    sched 0024 IC35-Outl	 0102-2
+    sched 0026 Outl-Outl	 0102-1
+    sched 0027 Outl-IC35  0107-1 0102-3
+    todo  000E IC35-IC35  0107-1 0102-3
+    todo  000D IC35-Outl	 0102-1
+    todo  000F Outl-Outl	 0102-2
+    todo  0010 Outl-IC35  0107-2 0102-4
+  get date+time 2000-11-17 23:23:34
+  set date+time 2000-11-17 23:30:28
+  category Addresses, Memo, ToDoList
+  get modified record count (01 04)
+  readrecmod
+  deleterec Addresses, Memo, Schedule, ToDoList
+  no writerec
+  reset changeflag
+- Delete.tar.gz:Import_171100.log	 +setdt +cat allrec -write -del +res
+    Anschliessend habe ich wie gewuenscht noch einen Export der
+    Outlook-Daten in den IC35 durchgefuehrt.
+  get date+time 2000-11-17 23:30:28
+  set date+time 2000-11-17 23:48:36
+  category
+  reset changeflag
+  no writerec
+

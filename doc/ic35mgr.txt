@@ -1,0 +1,783 @@
+	$Id: ic35mgr.txt,v 1.10 2001/02/03 18:39:07 tsch Rel $
+	IC35 Manager Protokoll
+	======================
+
+Inhalt
+------
+	IC35-Manager Operationen
+	IC35-Manager Protokoll
+	  Basiskommandos
+	  Datenblock senden PC->IC35
+	  Datenblock empfangen PC<-IC35
+	Verbindungsaufbau
+	Verbindungsabbau
+	IC35 Datensicherung
+	IC35 Datenwiederherstellung
+	Protokoll MMCard-Operationen
+	MMCard Operationen
+	    MMCard Status
+	    MMCard Label
+	  MMCard Directory Operationen
+	    MMCard Directory Open
+	    MMCard Directory Length
+	    MMCard Directory Entry
+	    MMCard Directory Close
+	  MMCard File Operationen
+	    MMCard File Open
+	    MMCard File Status
+	    MMCard File Read
+	    MMCard File Write
+	    MMCard File Close
+	    MMCard File Delete
+	Anhang: Logfiles der Protokoll-Analyse
+
+
+???	Unklarheiten ueber das IC35 Manager Protokoll sind wie hier mit ???
+???	am Zeilenanfang markiert.
+
+
+IC35-Manager Operationen
+------------------------
+	- Verbindungsaufbau mit IC35
+	  - Welcome
+	  - Identifikation und Status IC35
+	- Verbindung zum IC35 trennen
+	- Sichern, Wiederherstellen
+	  - IC35 Datensicherung nach database.org
+	  - IC35 Datenwiederhestellung aus database.org
+	- MMCard Operationen
+	  - Status, Inhalt IC35 MMCard
+	  - Datei Transfer nach IC35 MMCard
+	  - Datei Transfer von IC35 MMCard
+	  - Datei loeschen in IC35 MMCard
+	(noch) nicht analysiert wurden:
+???	- Transfer Applikationsprogramm ins IC35
+???	- Applikationsprogramm im IC35 loeschen
+???	- Transfer einer Grafik-Bitmapdatei ins IC35
+???	- Transfer einer MIDI-Datei ins IC35
+
+	Fortschrittsanzeigen des IC35 Manager unter Windows:
+	- Zugriff auf IC35 Info ..
+	- Zugriff erfolgreich
+	- MMCard1 wird getestet
+	- ..\IC35
+	- ..\APP
+	- ..\<*.APP ..>
+	- ..\<2000 ..>
+	- MMCard2 wird getested
+	- keine MMCard2 vorhanden
+	Standardablauf IC35 Manager unter Windows
+	- Verbindungsaufbau mit IC35
+	  ausgeloest durch MouseClick "connect" am IC35 Manager
+	  fordert Knopfdruck an SyncStation
+	- Status, Inhalt IC35 MMCard
+	- Verbindung zum IC35 trennen
+	  ausgeloest durch MouseClick "disconnect" am IC35 Manager
+
+
+IC35-Manager Protokoll
+----------------------
+	Die Leitungsparameter fuer die Kommunikation zwischen PC und
+	IC35 sind Baudrate 115200, No parity, 8 databits, 2 stopbits.
+	Die Basisoperationen des IC35-Manager Protokolls sind
+	- Basiskommando mit Bestaetigung
+	- Datenblock senden und Verifikation mit Pruefsumme
+	- Datenblock emfangen und Verifikation mit Pruefsumme
+
+    Basiskommandos
+	Einige Basiskommandos des IC35-Manager Protokolls bestehen
+	jeweils aus einem 1byte-Kommando vom PC an den IC35, gefolgt
+	von einer 1byte-Antwort vom IC35 an den PC. Wenn die Antwort
+	vom IC35 ausbleibt, wird das Kommando wiederholt.
+	Kommunikation PC -> IC35, PC <- IC35:
+	 -> command
+	 timeout 0.5 sec
+	 -> command
+	 <- response
+	Die beobachteten Basiskommandos sind:
+	Verbindungsabbau
+	 -> 01
+	 <- 90
+	Reset Manager-Protokoll
+	 -> 09
+	 <- 90
+	Identifikation
+	 -> 10
+	 <- 90
+	 <- "DCS_SDK" 00
+	IC35 Datensicherung
+	 -> 13
+	 <- 90
+	IC35 Datenwiederherstellung
+	 -> 14
+	 <- 90
+	 -> 70
+	 <- C0
+	Einleitung MMCard-Operation
+	 -> 15
+	 <- 90
+	Info Datensicherung
+	 -> 18
+	 <- 90
+	 <- 30 31 32 38
+	Start des Verbindungsaufbaus
+	 -> 40
+	 <- 80
+	Positive Quittung
+	 -> 60
+	 <- A0
+	Negative Quittung
+	 -> 62
+	 <- A0
+	Dieser Protokollablauf der Basiskommandos ist mit Mcmdrsp()
+	in mgrproto.c implementiert.
+
+    Datenblock senden PC->IC35
+	Bei IC35-Datenwiederherstellung und MMCard-Operationen werden
+	Datenbloecke vom PC an den IC35 gesendet und die Uebertragung
+	mit einer Pruefsumme verifiziert und ggf. wiederholt.
+	Bei den MMCard-Operationen wird die Laenge des Datenblocks an
+	den IC35 gesendet und vom IC35 bestaetigt. Vor dem Senden der
+	Laenge muss 10 Millisekunden gewartet werden.
+	Bei IC35-Datenwiederherstellung unterbleibt dies, weil die
+	Laenge (136 oder 16384 Bytes) a priori feststeht.
+	Beim Senden des Datenblocks muss erfahrungsgemaess mindestens
+	alle 29 Bytes jeweils 10 Millisekunden gewartet werden. Offenbar
+	ist der IC35 nicht faehig, den Datenblock bei 115200 Baud ohne
+	diese Verzoegerungen korrekt zu empfangen.
+	Auf die Pruefsumme muss bis zu 10.0 Sekunden gewartet werden.
+	Kommunikation PC -> IC35, PC <- IC35:
+	 -> nn_nn	Laenge des Datenblocks, niederwertiges Byte zuerst
+	 <- E0		Empgangsbestaetigung der Laenge
+	 -> (Datenblock von nn_nn Bytes)
+	 <- cc_cc	Pruefsumme des Datenblocks, niederwertiges Byte zuerst
+	Die Pruefsumme ist die arithmetische Summe aller Bytes des
+	Datenblocks abgeschnitten auf 16 Bit. Wenn Datenblock-Bytes
+	verloren gehen (Overrun error im IC35) oder verfaelscht werden,
+	trifft die Pruefsumme vom IC35 erst ca. 8.2 Sekunden nach dem
+	Versand des Datenblocks ein.
+	Bei unstimmiger Pruefsumme 'cc_cc' wird negativ quittiert:
+	   -> 62	negative Quittung
+	   <- A0	Empfangsbestaetigung der Quittung
+	und der Datenblock erneut an IC35 gesendet.
+	Bei uebereinstimmender Pruefsumme 'cc_cc' wird positiv quittiert:
+	 -> 60		positive Quittung
+	 <- A0		Empfangsbestaetigung der Quittung
+	Wenn die Empfangsbestaetigung der Quittung vom IC35 ausbleibt, wird
+	die positive oder negative Quittung wiederholt.
+	Dieser Protokollablauf ist mit Msendblk() in mgrproto.c implementiert.
+
+    Datenblock empfangen PC<-IC35
+	Bei IC35-Datensicherung und MMCard-Operationen werden Datenbloecke
+	vom IC35 am PC empfangen und die Uebertragung mit einer Pruefsumme
+	verifiziert und ggf. wiederholt.
+	Bei den MMCard-Operationen wird die Laenge des Datenblocks vom
+	IC35 empfangen und bestaetigt. Auf die Laenge muss 3.5 Sekunden
+	gewartet werden.
+	Bei IC35-Datensicherung unterbleibt dies, weil die Laenge (136 oder
+	16384 Bytes) a priori feststeht.
+	Kommunikation PC -> IC35, PC <- IC35:
+	 <- nn_nn	Laenge des Datenblocks, niederwertiges Byte zuerst
+	 -> E0		Empgangsbestaetigung der Laenge
+	 <- (Datenblock von nn_nn Bytes)
+	 <- cc_cc	Pruefsumme des Datenblocks, niederwertiges Byte zuerst
+	Bei unstimmiger Pruefsumme 'cc_cc' oder kuerzerer Laenge als
+	angekuendigt wird negativ quittiert:
+	   -> 62	negative Quittung
+	   <- A0	Empfangsbestaetigung der Quittung
+	und der Datenblock wird erneut vom IC35 empfangen.
+	Bei uebereinstimmender Pruefsumme 'cc_cc' wird positiv quittiert:
+	 -> 60		positive Quittung
+	 <- A0		Empfangsbestaetigung der Quittung
+	Wenn die Empfangsbestaetigung der Quittung vom IC35 ausbleibt,
+	wird die positive oder negative Quittung wiederholt.
+	Dieser Protokollablauf ist mit Mrecvblk() in mgrproto.c implementiert.
+
+
+Verbindungsaufbau
+-----------------
+     1. Welcome Phase
+	- Der PC sendet wiederholt einzelne Zeichen "@" (hex 40) bis vom
+	  IC35 "WELCOME" (hex 57 45 4C 43 4F  4D 45) empfangen wird.
+	  Dies passiert durch Druecken des Sync-Station Knopfs.
+	- Der PC sendet noch einmal ein Zeichen "@" (hex 40), der IC35
+	  antwortet mit einem Byte hex 80.
+	Kommunikation PC -> IC35, PC <- IC35
+	 -> 40
+	 timeout 1.15 sec
+	 -> 40
+	 sync-station button
+	 <- 57 45 4C 43 4F 4D 45
+	    W  E  L  C  O  M  E
+     2. Basiskommando "Start Verbindungsaufbau"
+	 -> 40
+	 <- 80
+     3. Basiskommando "Reset"
+	 -> 09
+	 <- 90
+     4. Basiskommando "Identifikation"
+	 -> 10
+	 <- 90
+	 <- 44 43 53 5F 53 44 4B 00
+	    D  C  S  _  S  D  K  .
+     5. optional Empfang des Statusblocks vom IC35
+	 -> FF
+	 <- 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ...
+	     ...  FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF
+	    Block von 16400 Bytes
+	    enthaelt u.a. Applikationsnamen, Email,SMS config, ..
+     6. Initialisierung
+	 -> 50
+	 <- 90  or  timeout 0.1 sec
+???	Beim Initialisierunskommando wurde keine Antwort beobachtet.
+???	Es wird 100 Millisekunden auf etwaige Antwort vom IC35 gewartet
+???	und diese verworfen, um sie nicht irrtuemlich fuer eine Antwort
+???	auf ein nachfolgendes Basiskommando zu halten.
+	Der IC35 braucht mindestens 10 Millisekunden Ruhe, bis er zu
+	weiteren Aktionen bereit ist. (Ansonsten muss das nachfolgende
+	erste Basiskommando wiederholt werden.)
+
+
+Verbindungsabbau
+----------------
+     1. Basiskommando "Reset"
+	 -> 09
+	timeout 1.0 sec
+	 -> 09
+	 <- 90
+     2. Basiskommando "Verbindungsabbau"
+	 -> 01
+	timeout 1.0 sec
+	 -> 01
+	 <- 90
+
+
+IC35 Datensicherung
+-------------------
+	Der Ablauf der Datensicherung mit den Protokoll-Basisoperationen
+	(s.o "IC35-Manager Protokoll") ist:
+     1. Basiskommmando "IC35 Datensicherung"
+	 -> 13
+	 <- 90
+     2. Empfang des Kopfblocks (136 Bytes) vom IC35
+	 <- B5 03 00 A2 01 00 F1 ..	headblock 136 bytes
+	 <- 98 0D			checksum
+	 -> 60				positive acknowledge
+	 <- A0				got ack
+	Hier und unten ist jeweils nur die positive Quittung erwaehnt,
+	bei falscher Pruefsumme oder Blocklaenge wird jeweils negativ
+	quittiert und der Kopf- oder Daten-Block wiederholt.
+     3. Empfang von 26 Datenblocks (je 16384 Bytes) vom IC35
+	 <- A0 09 00 40 01 00 00 ..	datablock 16384 bytes
+	 <- C0 4C			checksum
+	 -> 60				positive acknowledge
+	 <- A0				got ack
+     4. Zweimal Basiskommando "Info Datensicherung"
+	 -> 18				command info-1
+	 timeout 1.0 sec
+	 -> 18				command info-1
+	 <- 90				response got command
+	 <- 30 31 32 38			info-1
+	 -> 18				command info-2
+	 timeout 0.5 sec
+	 -> 18				command info-2
+	 <- 90				response got command
+	 <- 30 31 32 38			info-1
+???	Der Inhalt der info response 30 31 32 38 = "0128" aehnelt sehr
+???	der Firmware-Version "1.28" des IC35, es ist jedoch noch unklar,
+???	ob diese Aehnlichkeit realen Gehalt hat.
+	Alle Empfangsdaten der Datensicherung werden gespeichert in der
+	Datei 'database.org', dies sind 426128 = 136 + 26*16384 + 4 +4
+	Bytes insgesamt (headblock, 26 datablocks, 2 infoblocks).
+
+
+IC35 Datenwiederherstellung
+---------------------------
+	Der Ablauf der Datenwiederherstellung mit den Protokoll-Basis-
+	operationen (s.o "IC35-Manager Protokoll") ist:
+     1. Zweimal Basiskommando "Info Datensicherung"
+	 -> 18				command info-1
+	 timeout 1.0 sec
+	 -> 18				command info-1
+	 <- 90				response got command
+	 <- 30 31 32 38			info-1
+	 -> 18				command info-2
+	 timeout 0.5 sec
+	 -> 18				command info-2
+	 <- 90				response got command
+	 <- 30 31 32 38			info-1
+	Die beiden Antworten 30 31 32 38 werden mit den Eintraegen am
+	Ende der Datei 'database.org' verglichen. Bei Uebereinstimmung
+	wird die Datenwiederherstellung fortgesetzt, andernfalls wird
+	sie abgebrochen.
+     2. Basiskommmandos "IC35 Datenwiederherstellung"
+	 -> 14				command restore-1
+	 timeout 1.0 sec
+	 -> 14				command restore-1
+	 <- 90				response got command
+	 -> 70				command restore-2
+	 <- C0				response got restore-2
+     3. Senden des Kopfblocks (136 Bytes) an IC35
+	 -> AD 03 00 9A 01 00 2B ..	headblock 136 bytes
+	 <- 5B 0D			checksum
+	 -> 60				positive acknowledge
+	 <- A0				response got ack
+     4. Senden von 26 Datenblocks (je 16384 Bytes) vom IC35
+	Auf die Pruefsumme muss bis zu 10.0 sec gewartet werden.
+	 -> A0 09 92 50 01 00 00 ..	datablock 16384 bytes
+	 <- 4D F3			checksum
+	 -> 60				positive acknowledge
+	 <- A0				response got ack
+     5. Basiskommando "Reset Manager-Protokoll"
+	 -> 09				command reset
+	 timeout 1.0 sec
+	 -> 09				command reset
+	 timeout 1.0 sec
+	 -> 09				command reset
+	 timeout 1.0 sec
+	 -> 09				command reset
+	 timeout 0.5 sec
+	 -> 09				command reset
+	 <- 90				response got command
+	Wie oben sind die Inhalte von Kopf- und Daten-Blocks Beispiele
+	und es ist jeweils nur die positive Quittung aufgefuehrt, bei
+	falscher Pruefsumme wird jeweils negativ quittiert und der Kopf-
+	oder Daten-Block wiederholt.
+	Insgesamt werden 426120 = 136 + 26*16384 Bytes uebertragen, d.h.
+	ein Kopfblock von 136 Bytes und 26 Datenblocks mit 16384 Bytes.
+	Die 2 bei der Datensicherung empfangenen 'infoblocks' von je 4
+	Bytes werden nicht an IC35 gesendet.
+???	Bei der Datenwiederherstellung werden Datum und Uhrzeit sowie
+???	Telefontyp auf Defaultwerte zurueckgesetzt! Sie muessen manuell
+???	korrigiert werden!
+
+
+Protokoll MMCard-Operationen
+----------------------------
+	Der allgemeine Ablauf der MMCard-Operationen mit den Protokoll
+	Basisoperationen (s.o "IC35-Manager Protokoll") ist:
+     1. Basiskommando "MMCard-Operation"
+	 -> 15		command mmcard
+	 <- 90		got command
+	Vor dem Senden der Blocklaenge des Kommandoblocks muss 10 msec
+	gewartet werden.
+     2. Senden des MMCard Kommandoblocks
+	 -> nn_nn	block length
+	 <- E0		got length
+	 -> (cmdblock of nn_nn bytes)
+	 <- cc_cc	got cmdblock, checksum is cc_cc (arithmetic, LSB first)
+	Bei unstimmiger Pruefsumme 'cc_cc' wird negativ quittiert:
+	   -> 62	neg.ack
+	   <- A0	got neg.ack, send block again
+	und der cmdblock erneut an IC35 gesendet.
+	Bei uebereinstimmender Pruefsumme 'cc_cc' wird positiv quittiert:
+	 -> 60		pos.ack
+	 <- A0		got pos.ack
+     3. Empfang des MMCard Antwortblocks
+	 <- nn_nn	block length
+	 -> E0		got length
+	 <- (rspblock of nn_nn bytes)
+	 <- cc_cc	checksum of rspblock is cc_cc (arithmetic, LSB first)
+	Bei unstimmiger Pruefsumme 'cc_cc' wird negativ quittiert:
+	   -> 62	neg.ack
+	   <- A0	got neg.ack
+	und der rspblock wird erneut vom IC35 empfangen.
+	Bei uebereinstimmender Pruefsumme 'cc_cc' wird positiv quittiert:
+	 -> 60		pos.ack
+	 <- A0		got pos.ack
+
+
+MMCard Operationen
+------------------
+	Im "IC35 Software Development Kit API Reference Guide" (ic35_api.pdf
+	aus ic35_prog.zip) sind unter "13. Multi Media Card File Operations"
+	beschrieben. Sie entsprechen weitgehend den MMCard PDUs der Protokoll
+	Analyse. Zu den mit "???" markierten Funktionen wurden keine PDUs
+	beobachtet, die PDU command codes sind reine Vermutung.
+
+	IC35 SDK API Funktion	mgrtrans.c	PDU command code
+	+-----------------------+---------------------------------------------
+	minitialCard		mmc_status	20 "MMCard1" 00
+???	mFormat			-		32	???
+???	mSetCardLabel		-		33	???
+	mGetCardLabel		mmc_label	34 "MMCard1" 00
+???	mGetCardInfo		-		35	???
+	mOpenFile		mmc_openfile	22 mm mm "MMCard1\FILE.EXT" 00
+???	mSetFilePointer		-		25	???
+	mWriteToFile		mmc_writefile	23 ...
+	mReadFromFile		mmc_readfile	24 ...
+	mGetFileInfo		mmc_statfile	26 ...
+	mCloseFile		mmc_closefile	27 ...
+???	mRenFile		-		21	???
+	mDeleteFile		mmc_delfile	28 "MMCard1\FILE.EXT" 00
+	mOpenDirectory		mmc_opendir	2A mm mm "MMCard1\IC35" 00
+	mGetDirectorySubItemNum	mmc_opendir	2B ...
+	mGetDirectorySubItem	mmc_readdir	2C ...
+???	mGetDirectoryInfo	-		2D	???
+	mCloseDirectory		mmc_closedir	2E ...
+???	mRenDirectory		-		29	???
+???	mDeleteDirectory	-		2F	???
+
+    MMCard Status
+	 -> command status "MMCard1"
+	    20  4D 4D 43 61 72 64 31  00
+	    cmd  M  M  C  a  r  d  1  nul
+	 <- response MMCard OK
+	    01 00
+	 <- response MMCard not present
+	    FF FF
+
+    MMCard Label
+	 -> command label "MMCard1"
+	    34  4D 4D 43 61 72 64 31  00
+	     .   M  M  C  a  r  d  1   .
+	    cmd mcard-id____________  nul
+	 <- reponse MMCard label
+	    01 00 00 4D 4D 43 61 72 64 31 00 20 20 20 00 00 00 00 00 00 00 00 48
+	     .  .  .  M  M  C  a  r  d  1  .  .  .  .  .  .  .  .  .  .  .  .  H
+	    ok       label___________________________                         ??
+
+  MMCard Directory Operationen
+	MMCard Directory Open empfaengt vom IC35 einen 'dirstat' Block,
+	welcher in allen folgenden Operationen jeweils an den IC35
+	gesendet und vom IC35 aktualisert wieder empfangen wird. Die
+	Details ueber den 'dirstat' Block wurden "Mmc.h" aus dem IC35
+	SoftwareDevelopmentKit entnommen, offenbar entsprechen sie
+	dem uebertragenen 'dirstat' Block. Beispiele:
+	Beispiel-1 "MMCard1" rootdir:
+	    5F 00 00 00 00 00 00 00 00 00 01 00 00 00
+	    sect_ clust sec_o dir_o sclst fileptr____
+	    00 00 00 00 FF 00 00 00 00 20 00 FE 01
+	    filesize___ cn cclst cclsn csecn rsrvd
+	Beispiel-2 "MMCard1\IC35\APP"
+	    00 00 02 00 00 00 40 00 15 00 01 00 00 00
+	    sect_ clust sec_o dir_o sclst fileptr____
+	    00 00 00 00 FF 15 00 00 00 20 00 FE 01
+	    filesize___ cn cclst cclsn csecn rsrvd
+    MMCard Directory Open
+	Beispiel-1 "MMCard1" rootdir
+	 -> command opendir "MMCard1"
+	    2A  01 00  4D 4D 43 61 72 64 31  00
+	     .   .  .   M  M  C  a  r  d  1   .
+	    cmd        dirpath="MMCard1"___  nul
+	 <- response
+	    01 00
+	    ok
+	    5F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    dirstat________________________________________
+	    00 00 00 00 00 00 00 00 00 FE 01
+	    _________________________dirstat
+	Beispiel-2 "MMCard1\IC35\APP"
+	 -> command opendir "MMCard1
+	    2A  01 00  4D 4D 43 61 72 64 31 5C 49 43 33 35 5C 41 50 50  00
+	    .    .  .   M  M  C  a  r  d  1  \  I  C  3  5  \  A  P  P   .
+	    cmd        dirpath="MMCard1\IC35\APP"_____________________  nul
+	 <- response
+	    01 00
+	    ok
+	    00 00 02 00 00 00 40 00 15 00 00 00 00 00 00 00
+	    dirstat________________________________________
+	    00 00 00 15 00 00 00 00 00 FE 01
+	    _________________________dirstat
+    MMCard Directory Length
+	Beispiel-1 "MMCard1" rootdir
+	 -> command dirlen
+	    2B
+	    cmd
+	    5F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    dirstat_from_opendir___________________________
+	    00 00 00 00 00 00 00 00 00 FE 01  00
+	    _________________________dirstat  nul
+	 <- response dirlen
+	    5F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    dirstat________________________________________
+	    00 00 00 00 00 00 00 00 00 FE 01  01 00  04 00
+	    _________________________dirstat  ?  ?   ndent
+	Beispiel-2 "MMCard1\IC35\APP"
+	 -> command dirlen
+	    2B
+	    cmd
+	    00 00 02 00 00 00 40 00 15 00 00 00 00 00 00 00
+	    dirstat_from_opendir___________________________
+	    00 00 00 15 00 00 00 00 00 FE 01  00
+	    _________________________dirstat  nul
+	 <- response dirlen
+	    00 00 02 00 00 00 40 00 15 00 00 00 00 00 00 00
+	    dirstat________________________________________
+	    00 00 00 15 00 00 00 00 00 FE 01  01 00  07 00
+	    _________________________dirstat  ?  ?   ndent
+    MMCard Directory Entry
+	Beispiel-1 "MMCard1" rootdir
+	 -> command readdir index=0000
+	    2C
+	    cmd
+	    5F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    dirstat_from_opendir_or_previous_readdir_______
+	    00 00 00 00 00 00 00 00 00 FE 01  01 00  00
+	    _________________________dirstat  idx+1  nul
+	 <- respnse readdir
+	    5F 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00
+	    dirstat______________________ nxidx ___________
+	    00 00 FF 00 00 00 00 20 00 FE 01  01 00
+	    _________________________dirstat  ?  ? 
+	    49 43 33 35 00 20 20 20 00 00 20 20 00 10
+	    filename="IC35"___________ ext=""_____ ty
+	    2E B3 5E 29 00 00 00 00 00 00
+	    timestamp__ ?  ?  size_______
+	 -> command readdir index=0001
+	    2C
+	    cmd
+	    5F 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00
+	    dirstat_from_opendir_or_previous_readdir_______
+	    00 00 FF 00 00 00 00 20 00 FE 01  02 00  00
+	    _________________________dirstat  idx+1  nul
+	 <- reponse readdir
+	    5F 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00
+	    dirstat______________________ nxidx ___________
+	    00 00 FF 00 00 00 00 40 00 FE 01  01 00
+	    _________________________dirstat  ?  ? 
+	    32 30 30 30 31 31 30 34 00 49 33 35 00 20
+	    filename="20001104"_______ ext="I35"__ ty
+	    C1 14 65 29 00 00 FE 89 00 00
+	    timestamp__ ?  ?  size_______
+	Beispiel-2 "MMCard1\IC35\APP"
+	 -> command readdir index=0000
+	    2C
+	    cmd
+	    00 00 02 00 00 00 40 00 15 00 00 00 00 00 00 00
+	    dirstat________________________________________
+	    00 00 00 15 00 00 00 00 00 FE 01  01 00  00
+	    _________________________dirstat  idx+1  nul
+	 <- response readdir
+	    00 00 02 00 00 00 40 00 15 00 01 00 00 00 00 00
+	    dirstat______________________ nxidx ___________
+	    00 00 FF 15 00 00 00 20 00 FE 01  01 00
+	    _________________________dirstat  ?  ? 
+	    2E 2E 00 20 20 20 20 20 00 00 20 20 00 10
+	    filename=".."_____________ ext=""_____ ty
+	    A1 B5 61 29 00 00 00 00 00 00
+	    timestamp__ ?  ?  size_______
+	 -> command readdir index=0001
+	    2C
+	    cmd
+	    00 00 02 00 00 00 40 00 15 00 01 00 00 00 00 00
+	    dirstat______________________ index ___________
+	    00 00 FF 15 00 00 00 20 00 FE 01  02 00  00
+	    _________________________dirstat  idx+1  nul
+	 <- response readdir
+	    00 00 02 00 00 00 40 00 15 00 02 00 00 00 00 00
+	    dirstat______________________ nxidx ___________
+	    00 00 FF 15 00 00 00 40 00 FE 01  01 00
+	    _________________________dirstat  ?  ?
+	    42 52 4F 57 53 45 52 00 00 41 50 50 00 20
+	    filename="BROWSER"________ ext="APP"__ ty
+	    89 B6 61 29 00 00 44 C0 05 00
+	    timestamp__ ?  ?  size_______
+	Fuer das Typfeld 'ty' wurden beobachtet
+	  10	Subdirectory
+	  20	File
+	Die Kodierung des Zeitstempels 'timestamp' ist wie bei DOS.
+	Die hoeherwertigen 16 Bits kodieren Jahr, Monat und Tag:
+	  yyyyyyy mmmm ddddd
+	  yyyyyyy		Jahre seit 1980
+		  mmmm		Monat 1-12
+		       ddddd	Tag 1-31
+	Die niederwertigen 16 Bits kodieren Stunde, Minute, Sekunde:
+	  hhhhh mmmmmm sssss
+	  hhhhh			Stunde
+		mmmmmm		Minute
+		       sssss	Sekunde / 2
+    MMCard Directory Close
+	Beispiel-1 "MMCard1" rootdir
+	 -> command closedir
+	    2E
+	    cmd
+	    5F 00 00 00 00 00 00 00 00 00 04 00 00 00 00 00
+	    dirstat______________________ index ___________
+	    00 00 FF 00 00 00 00 80 00 FE 01  00
+	    _________________________dirstat  nul
+	 <- response closedir
+	    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    00 00 00 00 00 00 00 00 00 00 00
+	Beispiel-2 "MMCard1\IC35\APP"
+	 -> command closedir
+	    2E
+	    cmd
+	    00 00 02 00 00 00 40 00 15 00 07 00 00 00 00 00
+	    dirstat______________________ index ___________
+	    00 00 FF 15 00 00 00 E0 00 FE 01  00
+	    _________________________dirstat  nul
+	 <- response closedir
+	    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    00 00 00 00 00 00 00 00 00 00 00
+
+  MMCard File Operationen
+    MMCard File Open
+	 -> command openfile
+	    22  01 00  4D 4D 43 61 72 64 31 5C 49 43 33 35 5C 41 50 50
+		mo_de  filepath="MMCard1\IC35\APP\REVERSI.APP"________
+		       5C 52 45 56 45 52 53 49 2E 41 50 50  00
+		       ___________________________filepath  nul
+	Der mo_de Parameter ist 01 00 (IC35 SDK: OPEN_EXISTING) zum Oeffnen
+	einer existierended MMCard Datei (im Lesemodus).
+	Der mo_de Parameter ist 00 00 (IC35 SDK: CREATE_ALWAYS) zum Erzeugen
+	einer neuen MMCard Datei, eine existierende Datei wird auf Laenge 0
+	gekuerzt.
+	 <- response openfile
+	    01 00
+	    ok
+	    00 00 15 00 00 00 C0 00 F9 00 00 00 00 00
+	    filestatus_______________________________
+	    44 40 00 00 00 F9 00 00 00 00 00 FE 01
+	    size=16452_ filestatus________________
+    MMCard File Status
+	 -> command filestat
+	    26
+	    00 00 15 00 00 00 C0 00 F9 00 00 00 00 00
+	    filestatus_______________________________
+	    44 40 00 00 00 F9 00 00 00 00 00 FE 01  00
+	    size=16452_ filestatus________________  nul
+	 <- response filestat
+	    00 00 15 00 00 00 C0 00 F9 00 00 00 00 00
+	    44 40 00 00 00 F9 00 00 00 00 00 FE 01  01 00
+	    52 45 56 45 52 53 49 00 00 41 50 50 00 20
+	    filename="REVERSI"________ ext="APP"__ ty
+	    DD B6 61 29 00 00 44 40 00 00
+	    timestamp__ ?  ?  size_______
+    MMCard File Read
+	 -> command fileread
+	    24
+	    cmd
+	    00 00 15 00 00 00 C0 00 F9 00 00 00 00 00
+	    filestatus_______________________________
+	    44 40 00 00 00 F9 00 00 00 00 00 FE 01  01 18  00
+	    size=16452_ filestatus________________  rdlen  nul
+	 <- response fileread
+	    00 00 15 00 00 00 C0 00 F9 00 01 18 00 00
+	    filestatus_______________________________
+	    44 40 00 00 00 FC 00 03 00 00 00 FE 01  01 00  01 18
+	    size=16452_ filestatus________________  ?  ?   rdlen
+	    80 F6 00 40 00 00 00 40 00 00 FF FF 1E 00 52 ..
+	    filedata_____________________________________..
+	 -> command fileread
+	    24
+	    cmd
+	    00 00 15 00 00 00 C0 00 F9 00 01 18 00 00
+	    filestatus_______________________________
+	    44 40 00 00 00 FC 00 03 00 00 00 FE 01  01 18  00
+	    size=16452_ filestatus________________  rdlen  nul
+	 <- response fileread
+	    00 00 15 00 00 00 C0 00 F9 00 02 30 00 00
+	    filestatus___________________ noffs _____
+	    44 40 00 00 00 FF 00 06 00 00 00 FE 01  01 00  01 18
+	    size=16452_ filestatus________________  ?  ?   rdlen
+	    36 01 23 36 00 21 0E 00 39 5E 23 56 EB 29 29 ..
+	    filedata_____________________________________..
+	 -> command fileread
+	    24
+	    cmd
+	    00 00 15 00 00 00 C0 00 F9 00 02 30 00 00
+	    filestatus_______________________________
+	    44 40 00 00 00 FF 00 06 00 00 00 FE 01  42 10  00
+	    size=16452_ filestatus________________  rdlen  nul
+	 <- response fileread
+	    00 00 15 00 00 00 C0 00 F9 00 44 40 00 00
+	    filestatus___________________ noffs _____
+	    44 40 00 00 00 01 01 08 00 00 00 FE 01  01 00  42 10
+	    size=16452_ filestatus________________  ?  ?   rdlen
+	    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ..
+	    filedata_____________________________________..
+    MMCard File Write
+	 -> command filewrite
+	    23
+	    cmd
+	    00 00 15 00 00 00 00 01 2F 01 00 00 00 00
+	    filestatus_______________________________
+	    00 00 00 00 00 2F 01 00 00 00 00 FE 01  01 18
+	    size=0_____ filestatus________________  wrlen
+	    80 F6 00 40 00 00 00 40 00 00 FF FF 1E 00 52 ..
+	    filedata_____________________________________..
+	 <- response filewrite
+	    00 00 15 00 00 00 00 01 2F 01 01 18 00 00
+	    filestatus___________________ noffs______
+	    01 18 00 00 00 32 01 03 00 00 00 FE 01  01 00
+	    size=6145__ filestatus________________  ok___
+	 -> command filewrite
+	    23
+	    cmd
+	    00 00 15 00 00 00 00 01 2F 01 01 18 00 00
+	    filestatus___________________ noffs______
+	    01 18 00 00 00 32 01 03 00 00 00 FE 01  01 18
+	    size=6145__ filestatus________________  wrlen
+	    36 01 23 36 00 21 0E 00 39 5E 23 56 EB 29 29 ..
+	    filedata_____________________________________..
+	 <- response filewrite
+	    00 00 15 00 00 00 00 01 2F 01 02 30 00 00
+	    filestatus___________________ noffs______
+	    02 30 00 00 00 35 01 06 00 00 00 FE 01  01 00
+	    size=12290_ filestatus________________  ok___
+    MMCard File Close
+	 -> command fileclose
+	    27
+	    cmd
+	    00 00 15 00 00 00 C0 00 F9 00 44 40 00 00
+	    filestatus___________________ noffs _____
+	    44 40 00 00 00 01 01 08 00 00 00 FE 01  00
+	    size=16452_ filestatus________________  nul
+	 <- response fileclose
+	    00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	    00 00 00 00 00 00 00 00 00 00 00 00 00
+    MMCard File Delete
+	 -> command filedel
+	    28  4D 4D 43 61 72 64 31 5C 49 43 33 35 5C 41 50 50
+	    cmd filepath="MMCard1\IC35\APP\REVERSI2.APP"_______
+		5C 52 45 56 45 52 53 49 32 2E 41 50 50  00
+		______________________________filepath  nul
+	 <- response filedel
+	    01 00
+	    ok___
+
+
+Anhang: Logfiles der Protokoll-Analyse
+--------------------------------------
+- Manager.tar.gz 2000-10-26 Michael Bruennert
+    Windows-NT einzeiliges Format, keine MMCard
+  - Manager_Login.LOG
+    connect mit IC35mgr
+  - Manager_Backup.LOG
+    IC35 Datensicherung nach database.org
+  - database.org
+    die Daten vom IC35 backup
+    the data backuped from IC35
+  - Manager_Logout.LOG
+    disconnect vom IC35mgr
+  - Manager_Reversi.LOG
+    Uebertragung des Reversi.app Programms ins IC35
+  - Reversi.app
+    das uebertragene Programm
+- BackupRestore.tar.gz 2000-10-30 Michael Bruennert
+    Windows-NT einzeiliges Format, keine MMCard
+  - Manager_Backup1.log
+    IC35 Datensicherung nach database.org
+  - Manager_Logout1.log
+    disconnect vom IC35mgr
+  - Manager_Restore1.log
+    IC35 Daten-Wiederherstellung von database.org
+- mgr_conn_disc.log.gz 2000-10-26 Thomas Schulz
+    Windows-98, keine MMCard
+    connect, disconnect
+- mgr_conn_disc_mmc.log.gz 2000-10-30 Thomas Schulz
+    Windows-98, mit MMCard1
+    connect, disconnect
+- mgr_rwd-file_20001107.tar.gz Thomas Schulz
+    Windows-98, mit MMCard1
+  - mgr_rd-reversi_20001107.log
+    connect, Lesen von MMCard1\IC35\APP\REVERSI.APP, disconnect
+  - mgr_wr-reversi2_20001107.log
+    connect, Schreiben von MMCard1\IC35\APP\REVERSI2.APP, disconnect
+    connect, Schreiben von
+  - mgr_del-reversi2_20001107.log
+    connect, Loeschen von MMCard1\IC35\APP\REVERSI2.APP, disconnect
+  - REVERSI.APP
+    das Reversi Programm, REVERSI2.APP ist Kopie davon
+

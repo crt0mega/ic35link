@@ -1,0 +1,5 @@
+ic35link (1.18.1-1) unstable; urgency=medium
+
+  * Initial release after adding compiler-workarounds and fixing some minor errors
+
+ -- crt0mega <crt0mega@c-r-t.tk>  Tue, 15 Sep 2020 20:13:25 +0200

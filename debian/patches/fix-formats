@@ -1,0 +1,16 @@
+--- a/src/datatxt.c
++++ b/src/datatxt.c
+@@ -67,11 +67,11 @@
+ 	++idx;					/*  increment rec.index	*/
+     }
+     get_ic35recdata( rec, NULL, &len );
+-    fprintf(outfp,"File \"%s\"  Record %3d IC35id=%08lX cflag=%02X length=%d\n",
++    fprintf(outfp,"File \"%s\"  Record %3d IC35id=%08lX cflag=%02X length=%ld\n",
+ 		  ic35fname(fileid), idx, ic35recid(rec), ic35recchg(rec), len);
+     for ( fi = 0; fi < ic35fnflds( fileid ); ++fi ) {
+ 	get_ic35recfld( rec, FILEfld(fileid,fi), &fld, &len );
+-	fprintf( outfp, "f%d(%d)\t", fi, len );
++	fprintf( outfp, "f%d(%ld)\t", fi, len );
+ 	if ( len != 0 ) {
+ 	    fprintf( outfp, "\"" );
+ 	    for ( i = 0; i < len; ++i ) {

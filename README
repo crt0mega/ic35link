@@ -1,0 +1,417 @@
+	$Id: README,v 1.19 2001/08/12 03:36:44 thosch Rel $
+		IC35Link for Linux
+		==================
+
+	IC35Link provides tools to communicate with the Siemens IC35
+	over a serial port.
+
+Contents
+	Abstract
+	Installation
+	  configure, make, install
+	  create configure script
+	Usage of ic35sync
+	  Examples
+	  Restrictions
+	Usage of ic35mgr
+	  Restrictions
+	Files in the distribution
+	  Documents
+	  Miscellaneous
+	  Tools
+	  Sources in the src directory
+	References
+	Standard Disclaimer, Warnings, Copyright
+
+Abstract
+--------
+	The tools included in the IC35Link package are:
+        - ic35sync
+	  synchronizes IC35 address, schedule, todo and memo data with
+	  Personal Information Management databases (PIMfiles).
+        - ic35mgr
+	  The IC35 manager is for accessing IC35 MMCard(s), backup,restore
+	  the IC35 PIM-database and install applications on the IC35.
+	  CAVEAT: install applications on the IC35 is (as of version 1.17)
+	  not yet implemented.
+	- vcaconv
+	  is a converter for PIMfiles in vCard,vCalendar and binary formats.
+	  it was mainly used during development. For non-developers the
+	  "imphandy" conversion might be useful to manage the phonebook of
+	  a mobile phone with the IC35: it converts vCards into the "HANDY"
+	  category for uploading them from this category on the IC35 to the
+	  phonebook of the mobile phone (after import or sync with IC35).
+	- ic35log
+	  is for pretty-printing ic35sync, ic35mgr (and 'portmon') logfiles
+	  and useful mainly for developers.
+	- ic35sync.txt
+	  describes the IC35 synchronization protocol (in german).
+	- ic35mgr.txt
+	  describes the IC35 manager protocols (in german).
+	All programs give help about usage if called with the short "-h" or
+	the long "--help" option.
+
+	Starting with version 1.17 the package is named "ic35link", because
+	it provides more than just IC35 synchronization under GNU/Linux.
+	Up to version 1.16 the package name was "ic35sync".
+
+Installation
+------------
+	Unpack the archive ic35link-*.tar.gz (you appeareantly did that ;-).
+  configure, make, install
+	Do the usual
+		./configure
+		make
+		su			# superuser login for install
+		make install-strip	# strip symbols and debugging info
+		exit			# superuser logout
+	Installation is done to /usr/local/bin and /usr/local/share/ic35link
+	by default, change that with 'configure --prefix=/some/other/path'.
+	For details run 'configure --help' and see the file INSTALL.
+	The 'configure' options of major interest are:
+	--prefix=/opt
+		install to /opt/bin/ instead of default /usr/local/bin/
+	--disable-logandcomsim
+		compile without logging and simulated communication support
+	--disable-warnings
+		disable compile warnings
+	--enable-ansi
+		enable strict ANSI-C compilation
+	--enable-pedantic
+		enable pedantic compile warnings
+		be warned to get several compile errors and/or warnings
+		feel free to fix them (and send me the patches :-)
+      * The programs are compiled with debugging info. Should you want
+	to install them with that, use 'make install' instead of the
+	'make install-strip' above.
+      * The programs and documents can be uninstalled with 'make uninstall'.
+      * If you modify the vCard/vCalendar parser source vcc.y, you will
+	need 'bison' version 1.25 or newer. Compilation with 'yacc' will
+	not work and/or create a vcc.c producing 'parser stack overflow'
+	errors.
+  create configure script
+	If you use an archive ic35link-*.tar.gz you should not need this.
+        If you obtained ic35link from the public CVS repository you have
+	to generate the configure script and Makefile.in with
+		sh autogen.sh
+	It will check for autoconf and automake, you'll have to install
+	these packages if some of the checks fail.
+	If all goes well it will automatically run './configure' with the
+	options passed to autogen.sh and "--enable-maintainer-mode". The
+	latter enables 'make maintainer-clean', which deletes everything
+	not in the CVS repository, e.g. also the configure script.
+	Setting the environment variable NOCONFIGURE to some non-empty
+	value will prevent autogen.sh from running configure.
+
+
+Usage of ic35sync
+-----------------
+	ic35sync synchronizes IC35 address, schedule, todo and memo data
+	with Personal Information Management databases (PIMfiles) mainly
+	in vCard,vCalendar format. Get information about usage with:
+		ic35sync --help
+	ic35sync supports 4 modes of operation, given as command argument:
+	- status
+	  reports IC35 status: firmware version, timestamp of last sync
+	  operation and total and modified number of records per IC35 file.
+	  No PIMfiles are accessed, contents of IC35 are not changed, thus
+	  good for an initial test.
+	- export
+	  does export IC35 data to PIMfile(s), data in IC35 is not changed
+	  and no IC35 or PIM records will be deleted. The sychronisation
+	  stamp will not be written to IC35 and any changemarks on records
+	  in the IC35 remain intact.
+	  This is the initial operation to start using IC35 data also with
+	  Linux Personal Information Managers. It is also usable to backup
+	  all the IC35 data.
+	  Records from existing PIMfile(s) can afterwards be propagated to
+	  IC35 with an 'import' or 'sync' operation.
+	- import
+	  does import data from PIMfile(s) into IC35, changes in PIMfile(s)
+	  reflect only the IC35 record numbers and status, no IC35 or PIM
+	  records will be deleted. The synchronisation stamp (current date
+	  and time) will be written to IC35 only if all IC35 records match
+	  with PIMfile, e.g. if the IC35 was empty before the import.
+	  This is the initial operation to start using Linux PIM databases
+	  also on IC35. it can be used also to restore data into IC35.
+	  Any records previously existing in IC35 can then be propagated
+	  into PIMfile(s) with an 'export' or 'sync' operation.
+	- sync
+	  synchronizes changes in IC35 and PIMfile(s): records modified in
+	  IC35 will be updated to PIMfile(s), records deleted in IC35 will
+	  be deleted from PIMfile(s) and vice versa.
+	  If changes to the same record were made in both the IC35 and the
+	  PIMfile, the latter takes precedence, i.e. PIM overrides IC35.
+	  All record changemarks on IC35 will be cleared and the current
+	  date and time will be written to IC35 as synchronisation stamp,
+	  because after sync all IC35 records match with PIMfile(s).
+	With the vCard/vCalendar format (default or option "--format vca")
+	up to 3 PIMfile(s) can be specified on the ic35sync commandline:
+	If 3 PIMfiles are specified, the first file is for Addresses, the
+	second file is for Schedule and ToDo, the third file is for Memo.
+	If 2 PIMfiles are specified, the first file is for Adresses and the
+	second file for Schedule, ToDo and Memo. Korganizer and gnomecal
+	will work with the second file only if there are not VMEMO-records
+	in it, i.e. only if there is not any Memo note on the IC35!
+	If 1 PIMfile is specified, this single file is used for all data
+	from Adresses, Schedule, ToDo and Memo. Korganizer, gnomecal and
+	and gnomecard cannot work with that single file!
+	If no PIMfiles are specified, the default filenames are used, which
+	are ic35.vcard for Adresses, ic35.vcal for Schedule and ToDo, and
+	ic35.memo for Memo, the files are assumed in the current directory.
+
+  Examples
+      * GNOME addressbook and calendar
+	IC35 syncstation connected at /dev/ttyS1, IC35 password is "secret"
+	initial export from IC35:
+		ic35sync -d /dev/ttyS1 -p secret export \
+		  ~/.gnome/GnomeCard.gcrd ~/.gnome/user-cal.vcf ic35.memo
+	synchronize changes in IC35 and addressbook,calendar:
+		ic35sync -d /dev/ttyS1 -p secret sync \
+		  ~/.gnome/GnomeCard.gcrd ~/.gnome/user-cal.vcf ic35.memo
+      * KDE KOrganizer and GNOME addressbook
+	initial import into IC35 at /dev/ic35, no IC35 password:
+		 ic35sync import ~/.gnome/GnomeCard.gcrd \
+		       ~/.kde/share/apps/korganizer/calendar.vcs ic35.memo
+	synchronize changes in IC35 and addressbook,KOrganizer:
+		ic35sync sync ~/.gnome/GnomeCard.gcrd \
+		       ~/.kde/share/apps/korganizer/calendar.vcs ic35.memo
+
+  Restrictions
+      * ic35sync yet has no options for resolving synchronize conflicts.
+	If the same record is modified on both sides, the modification in
+	the PIMfile takes precedence and overrides the changes on IC35.
+      * ic35sync yet has a proprietary VMEMO format for memo records.
+	The VMEMO format was invented by me following the vCard/vCalendar
+	standard. Unfortunately there is no GUI software supporting it.
+	Suggestions for the memo records are welcome.
+      * ic35sync should be used with _existing_ vCalendar files, because
+	Korganizer and gnomecal rely on their own file formats and do not
+	work properly with vCalendar files _created_ by ic35sync.
+	Korganizer uses newline characters as line separators and wants
+	its own PRODID.
+	gnomecal uses carriagereturn linefeed sequences as line separators
+	and wants its own PRODID and VERSION.
+	ic35sync does respect and not change the format of an existing
+	vCalendar file to avoid confusing Korganizer/gnomecal.
+      * ic35sync's sync operation is rather slow, because always all IC35
+	records are read to find the records, which were deleted from the
+	PIMfile(s). This is needed, as Korganizer, gnomecal and gnomecard
+	leave no traces (e.g. delete-flags) from deleted records.
+      * gnomecal does not support VEVENT.DESCRIPTION but multiple lines
+	in VEVENT.SUMMARY.
+	ic35sync maps the first line of VEVENT.SUMMARY to/from the IC35
+	"Summary" field and all remaining lines to/from the IC35 "Notes"
+	field.
+      * gnomecal does not support VTODO.DTSTART.
+	ic35sync maps the IC35 "Start" field to/from a line marked with
+	"DTSTART:" in VTODO.DESCRIPTION.
+      * gnomecard does not support the X-PILOTSTAT change mark.
+	ic35sync regards VCARD records as changed if their with revised
+	time VCARD.REV is newer than the date and time of the last sync.
+      * korganizer does not support VTODO.CATEGORIES, VTODO.DTSTART and
+	VTODO.DUE
+	ic35sync maps the IC35 Category and the "Start" and "Due" fields
+	to/from lines marked "CATEGORIES:", "DTSTART:" and "DUE:" in the
+	VTODO.DESCRIPTION.
+      * korganozer supports only VEVENT.DALARM, but not VEVENT.AALARM
+	ic35sync maps IC35 "LED" and "Beep" alarms to/from VEVENT.DALARM.
+      * the IC35 address fields "(Def.)" have no VCARD counterparts.
+	ic35sync maps them to/from lines marked "(def1):" and "(def2):"
+	in VCARD.NOTE.
+
+
+Usage of ic35mgr
+----------------
+	The IC35 manager currently supports access of the IC35 MMCard(s)
+	and backup,restore the IC35 internal PIM-database to/from a file.
+	Get help about usage with
+		ic35mgr --help
+	and experiment (and please tell me about problems, suggestions and
+	wanted features, e-mail address below).
+
+  Restrictions
+      * The ic35mgr MMCard access commands mmcget,mmcput,mmcdel accept the
+	filepath in the IC35 native form (e.g. MMcard1\IC35\APP\REVERSI.APP)
+	or more convenient with lowercase characters and slash separators
+	(e.g. mmcard1/ic35/app/reversi.app).
+	The filepath argument in the IC35 native form must be enclosed in
+	single (') or double (") quotes to prevent the shell from eating
+	the backslash (\) characters.
+      * Reading a MMCard file with mmcget will set the timestamp of the
+	local file to that of the MMCard file.
+	Even when only reading a MMCard file, the IC35 will set the MMCard
+	file's timestamp to the current date and time.
+      * Installing application programs on the IC35 is planned, but not yet
+	implemented. If someone (from Siemens) would provide me with the
+	specification of the installation protocol would ease this a lot.
+
+
+Files in the Distribution
+-------------------------
+  Documents
+    README
+	sic! you're reading this
+    NEWS
+	release information about IC35Link
+    ChangeLog
+	sic! details about what was changed
+    TODO
+	sic! what remains to be done and whish list
+    COPYING
+	GNU GENERAL PUBLIC LICENSE
+    AUTHORS
+	who has written IC35Link
+    THANKS
+	who has contributed to IC35Link
+    doc/ic35sync.txt
+	description of IC35sync protocol, yet only (?) german
+    doc/ic35mgr.txt
+	description of IC35manager protocol, yet only (?) german
+
+  Miscellaneous
+    INSTALL
+	generic installation instructions for 'configure'
+    autogen.sh
+	generates configure and Makefile.in etc.
+    config.h
+	configuration header created by configure
+    config.h.in
+	input for configure to create config.h, created by autoheader
+    configure
+	configuration script, created by autoconf
+    configure.in
+	input for autoconf to create configure
+    Makefile
+	makes 'make' make it ;-) created by configure
+    Makefile.in
+	input for configure to create Makefile, created by automake
+    Makefile.am
+	input for automake to create Makefile.in
+
+  Tools
+    src/ic35log.sh
+	make logfiles of IC35 communications more readable. supported are
+	logfiles created by "portmon" (from www.sysinternals.com) and the
+	logfiles from ic35sync and ic35mgr (of course ;-).
+
+  Sources in the src directory
+    ic35sync.c
+	IC35 synchronize PersonalInformationManagement (PIM) data
+    ic35mgr.c
+	IC35 manager: access MMCard, backup,restore database
+    dataio.c
+    dataio.h
+	PIM data import to / export from IC35 database records
+    datatxt.c
+	support for text output IC35 record
+    databin.c
+	support for binary IC35 record format (PIM)files
+    datavca.c
+	support for vCard,vCalendar format PIMfiles
+    vcutil.h
+    vcutil.c
+	utilities for vCard,vCalendar
+    ic35frec.h
+    ic35frec.c
+	IC35 record access and file descriptions
+    syntrans.c
+    syntrans.h
+	IC35 synchronize transactions:
+	connect, disconnect
+	open, close, read, write IC35 database file
+    synproto.c
+    synproto.h
+	IC35 synchronize protocol
+    mgrtrans.c
+    mgrtrans.h
+	IC35 manager transactions:
+	connect, disconnect
+	MMCard status, directory, file access
+    mgrproto.c
+    mgrproto.h
+	IC35 manager protocol
+    genproto.c
+    genproto.h
+	general IC35 protocol support
+    comio.c
+    comio.h
+	basic serial communication with IC35
+    util.c
+    util.h
+	utilities: logging, errors, messages
+    vcc.h
+	export header for vCard,vCalendar API
+    vcc.y
+	parser for vCard-,vCalendar-files 
+    vobject.h
+    vobject.c
+	API for vCard,vCalendar VObject
+    port.h
+	compilation environment for vCard,vCalendar API
+    vcaconv.c
+	vCard,vCalendar conversion, e.g. to/from binary IC35 data
+
+
+References
+----------
+	The vCard,vCalendar API sources were taken from gnome-pim-1.2.0,
+	and fixed a bit to reduce compile warnings.
+	Sources for vCard,vCalendar API:
+	- Gnome-PIM gnome-pim-1.2.0.tar.gz
+	  from ftp://ftp.gnome.org/pub/GNOME/stable/sources/gnome-pim/
+	- KPilot kpilot_3.1.10-1.0.tar.gz (based on KPilot 3.1b9)
+	  from ftp://kde.tdyc.com/pub/kde/debian/dists/potato/contrib/source/
+	  see also http://www.slac.com/pilone/kpilot_home/index.html
+	- versit consortium's SDK for Windows DLLs
+	  from http://www.imc.org/pdi/sdkdllsr.zip
+	The autogen.sh script was taken from gnome-pim-1.3.2 and fixed
+	a bit to fit the needs of ic35link.
+
+
+Standard Disclaimer, Warnings, Copyright
+----------------------------------------
+	THIS SOFTWARE HAS BUGS (as any software has ;-). Use it at your
+	own risk. I take no responsibility for any data loss or damage,
+	etc. done by this software, i.e. should your IC35 crash or explode
+	while using ic35sync or ic35mgr, sorry.
+	Besides my home machine this software was successfully used with:
+	- KDE-1.1.2 Korganizer v1.1.1
+	- Gnome-1.2 gnomecard,gnomecal from gnome-pim-1.2.0
+	- IC35 Firmware V1.28
+	- IC35 Firmware V1.38 (thanks Thomas Lichtenberg)
+	- Debian-2.2r2 kernel 2.0.36 gcc-2.95.2 Pentium-I/133MHz /dev/ttyS3
+	- Debian-2.2r2 kernel-2.2.13 gcc-2.95.2 Pentium-III/400MHz /dev/ttyS1
+	- SuSE-7.2 (thanks Karl Stroetmann)
+	- SuSE-7.0 kernel-2.2.16 gcc-2.95.2-98 AMD-K5/100MHz /dev/ttyS1
+	- SuSE-7.0 kernel-2.2.16 gcc-2.95.2-98 Pentium-III/450MHz /dev/ttyS0
+	- SuSE-6.0 kernel-2.0.36 gcc-2.7.2.3-5 BAYCOM Notebook Pentium-I/166MHz
+	- Mandrake-7.2 AMD-Duron/750MHz /dev/ttyS1 (thanks Malte Schmidt)
+	- Mandrake-8.0 gcc-2.96 (thanks Christian Theile)
+
+	That being said, I _really_ want comments regarding this software
+	as well as suggestions and bug reports.
+
+	t.schulz@d2mail.de	Thomas Schulz		2000-12-25
+				Geibelstrasse 57
+				D-22303 Hamburg
+				Germany
+
+Copyright (C) 2000,2001 Thomas Schulz
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program in the file COPYING; if not, write to the
+    Free Software Foundation, Inc.
+    59 Temple Place, Suite 330,
+    Boston, MA  02111-1307  USA
+

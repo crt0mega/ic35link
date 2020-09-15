@@ -1,0 +1,14 @@
+Adding several $CFLAGs as a workaround for building this currently broken package with current gcc versions
+--- a/configure.in
++++ b/configure.in
+@@ -116,6 +116,10 @@
+   fi
+ fi
+ 
++dnl ---------------------------------------------------------------------------
++dnl Add several cflags as a workaround
++dnl ---------------------------------------------------------------------------
++CFLAGS="$CFLAGS -Wno-format-overflow -Wno-stringop-overflow -Wno-builtin-declaration-mismatch -Wno-aggressive-loop-optimizations -Wno-unused-result -Wno-pointer-to-int-cast"
+ 
+ dnl ---------------------------------------------------------------------------
+ dnl generate the config header
